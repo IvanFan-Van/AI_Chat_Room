@@ -1,6 +1,10 @@
 from typing import Annotated, TypedDict
 from dataclasses import dataclass
 from dotenv import load_dotenv, find_dotenv
+import os
+import json
+from datetime import datetime
+import time
 
 load_dotenv(find_dotenv()) # 加载环境变量, 使用langsmith监控
 
@@ -17,6 +21,9 @@ class charactor():
     name = 'undefined'
     mbti = [0.5, 0.5, 0.5, 0.5] #1/0 1st: E/I, 2nd: N/S, 3rd: F/T, 4th: J/P
     background = 'undefined'
+    # 未来可以添加心理活动、日程安排等属性
+    psychological_state = {}
+    schedule = {}
     
     def __init__(self, name, mbti):
         self.name = name
@@ -28,7 +35,7 @@ class charactor():
         """根据MBTI值生成性格描述"""
         traits = []
         if self.mbti[0] > 0.5:
-            traits.append("外向型(E)：喜欢社交，从与他人互动中获取能量")
+            traits.append(f"外向型(E)：喜欢社交，从与他人互动中获取能量")
         else:
             traits.append("内向型(I)：更喜欢独处，从内心世界获取能量")
             
@@ -54,6 +61,7 @@ class charactor():
 class Message(TypedDict):
     sender: str
     content: str
+    timestamp: str  # 添加时间戳
 
 # =====定义聊天室类=====  
 class ChatRoom():
@@ -62,8 +70,13 @@ class ChatRoom():
     charactors = []
     chat_record:list[Message] = []
     chat_background = '你是一名大学生。你现在正与同在一所大学的朋友进行日常对话。要求：使用日常语言回复，使用中文，不用在回答前面加名字和冒号，别重复之前说过的话，每次回复不超过50字。'
+    session_id = ""
+    
     def __init__(self):
-        pass
+        # 创建一个唯一的会话ID，基于时间戳
+        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # 确保存在记录文件夹
+        os.makedirs(f"chat_histories/{self.session_id}", exist_ok=True)
 
     def add_charactor(self, charactor):
         self.num_charactors += 1
@@ -75,6 +88,31 @@ class ChatRoom():
         for message in self.chat_record:
             history += f"{message['sender']}: {message['content']}\n"
         return history
+
+    def save_chat_history(self, incremental=False):
+        """将聊天历史保存到文件中
+        
+        Args:
+            incremental: 如果为True，表示这是增量更新而不是完整保存
+        """
+        file_path = os.path.join(f"chat_histories/{self.session_id}", f"chat_{self.session_id}.json")
+        
+        # 准备要保存的数据
+        chat_data = {
+            "session_id": self.session_id,
+            "timestamp": datetime.now().isoformat(),
+            "participants": [char.name for char in self.charactors],
+            "background": self.chat_background,
+            "messages": self.chat_record
+        }
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(chat_data, f, ensure_ascii=False, indent=2)
+        
+        if not incremental:
+            print(f"\n聊天记录已保存至: {file_path}")
+        
+        return file_path
 
     def start_chat(self, chat_length):
         for i in range(chat_length):
@@ -97,9 +135,16 @@ class ChatRoom():
                 response = llm.invoke(messages)
                 response_content = response.content
 
-                """更新对话历史"""
-                self.chat_record.append({"sender": charactor.name, "content": response_content})
+                """更新对话历史，添加时间戳"""
+                timestamp = datetime.now().isoformat()
+                self.chat_record.append({"sender": charactor.name, "content": response_content, "timestamp": timestamp})
                 print(f"{charactor.name}: {response_content}")
+                
+                # 每次角色回复后立即更新聊天记录
+                self.save_chat_history(incremental=True)
+        
+        # 聊天结束后，执行最终保存并显示提示信息
+        self.save_chat_history(incremental=False)
 
        
 if __name__ == "__main__":
