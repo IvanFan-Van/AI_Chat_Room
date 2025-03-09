@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Room</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Log Selection Modal -->
+    <div id="log-selection-modal" class="modal">
+        <div class="modal-content">
+            <h2>选择聊天记录</h2>
+            <div id="logs-container" class="logs-container">
+                <div class="loader"></div>
+                <p>正在加载聊天记录...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container" style="display: none;">
+        <header>
+            <h1>AI Chat Room</h1>
+            <div class="header-controls">
+                <button id="change-log" class="button">切换聊天</button>
+                <button id="thoughts-toggle" class="button">显示想法</button>
+                <button id="dark-mode-toggle" class="button">🌙 深色模式</button>
+                <div id="status">状态: 已连接</div>
+            </div>
+        </header>
+        
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="session-info">
+                <h3>会话信息</h3>
+                <div id="session-id"></div>
+                <div id="timestamp"></div>
+                <div id="participants"></div>
+            </div>
+            <div class="background-info">
+                <h3>背景信息</h3>
+                <div id="background"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/chat.js"></script>
+</body>
+</html>
