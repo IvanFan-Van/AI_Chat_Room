@@ -159,7 +159,8 @@ function displayChatData(data) {
     chatMessagesElement.innerHTML = '';
     
     // Display all messages (or filter if needed)
-    data.messages.forEach(message => {
+    filteredMessages = data.messages.filter(message => message.decision === "yes" || message.sender === "system");
+    filteredMessages.forEach(message => {
         const messageElement = document.createElement('div');
         messageElement.className = `message ${message.sender.toLowerCase()}`;
         

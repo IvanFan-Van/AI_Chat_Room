@@ -117,7 +117,7 @@ header {
 .message .bubble {
     padding: 12px 15px;
     border-radius: 18px;
-    display: inline-block;
+    display: block;
     position: relative;
     word-break: break-word;
     box-shadow: 0 1px 5px var(--shadow-color);
@@ -137,25 +137,21 @@ header {
 
 .message.alice .bubble {
     background-color: var(--alice-bubble);
-    float: left;
     border-bottom-left-radius: 5px;
 }
 
 .message.bob .bubble {
     background-color: var(--bob-bubble);
-    float: right;
     border-bottom-right-radius: 5px;
 }
 
 .message.charlie .bubble {
     background-color: var(--charlie-bubble);
-    float: left;
     border-bottom-left-radius: 5px;
 }
 
 .message.diana .bubble {
     background-color: var(--diana-bubble);
-    float: left;
     border-bottom-left-radius: 5px;
 }
 
@@ -210,7 +206,7 @@ header {
 #background {
     white-space: pre-wrap;
     font-size: 14px;
-    background-color: var(--info-bg);
+    /* background-color: var(--info-bg); */
     padding: 15px;
     border-radius: 8px;
     transition: background-color 0.3s;
