@@ -1,6 +1,7 @@
 from typing import Annotated, TypedDict
 from dataclasses import dataclass
 from dotenv import load_dotenv, find_dotenv
+from pathlib import Path
 import os
 import json
 from datetime import datetime
@@ -8,6 +9,8 @@ import time
 import re
 
 load_dotenv(find_dotenv()) # 加载环境变量, 使用langsmith监控
+
+LOG_FOLDER = Path("./frontend/log") # 日志文件夹
 
 #=====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
@@ -29,15 +32,12 @@ class charactor():
     name = 'undefined'
     mbti = [0.5, 0.5, 0.5, 0.5] #1/0 1st: E/I, 2nd: N/S, 3rd: F/T, 4th: J/P
     background = 'undefined'
-    # TODO 添加心理活动、日程安排等属性
-    thoughts = []
     
     def __init__(self, name, mbti):
         self.name = name
         self.mbti = mbti
         self.background = '你是' + self.name + '。'
         self.generate_personality()
-        self.thoughts = []
         
     # TODO 添加更多属性, 丰富性格特征描述, 添加程度描述
     def generate_personality(self):
@@ -80,12 +80,6 @@ class charactor():
             "\n如果你决定不参与，则无需填写<response>部分"
         )
 
-    def add_thought(self, thought):
-        self.thoughts.append({
-            "thought": thought,
-            "timestamp": datetime.now().isoformat()
-        })
-
 
 # =====定义聊天室类=====  
 class ChatRoom():
@@ -109,11 +103,18 @@ class ChatRoom():
 '''
     session_id = ""
     
-    def __init__(self):
+    def __init__(self, session_id=None):
         # 创建一个唯一的会话ID，基于时间戳
-        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if not session_id:
+            self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        else:
+            self.session_id = session_id
+        
         # 创建日志文件夹
-        os.makedirs(f"log/{self.session_id}", exist_ok=True)
+        log_folder = LOG_FOLDER / f"{self.session_id}"
+        log_folder.mkdir(parents=True, exist_ok=True)
+
+        # 初始化角色和对话记录
         self.chat_record = []
         self.full_record = []
 
@@ -151,7 +152,7 @@ class ChatRoom():
         Args:
             incremental: 如果为True，表示这是增量更新而不是完整保存
         """
-        file_path = os.path.join(f"log/{self.session_id}", f"chat_{self.session_id}.json")
+        file_path = LOG_FOLDER / f"{self.session_id}" / f"chat_{self.session_id}.json"
         
         # 准备要保存的数据
         chat_data = {
