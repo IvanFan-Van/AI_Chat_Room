@@ -80,19 +80,7 @@ class charactor(threading.Thread):
         
         # 更新背景信息中的性格描述部分
         basic_info = self.background.split("\n\n")[0]
-        self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n你的言行将会受上述性格特质影响。"
-        self.background += (
-            "\n\n你不必对每一个话题都做出回应。根据你的性格特点，评估当前话题是否值得你参与回应。"
-            "\n每一次活动请按照以下格式回复："
-            "\n1. 首先，决定你是否要对当前话题发表回应："
-            "\n   - 使用 <decision>yes</decision> 表示你决定参与这个话题"
-            "\n   - 使用 <decision>no</decision> 表示你决定不参与这个话题"
-            "\n2. 然后，无论你决定是否参与，都需要解释你的决定理由："
-            "\n   - 使用 <think>你的想法</think> 包裹你的内心活动或思考过程，说明你为何决定参与或不参与"
-            "\n3. 如果你决定参与，请提供你的回应："
-            "\n   - 使用 <response>你的回应</response> 包裹你要在群里说的话"
-            "\n如果你决定不参与，则无需填写<response>部分"
-        )
+        self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n你的思考和言行将会受上述性格特质影响。"
 
     def add_thought(self, thought):
         self.thoughts.append({
@@ -117,10 +105,14 @@ class charactor(threading.Thread):
             user_message = {
                 "role": "user", 
                 "content": (
+                    # 获取聊天记录，以及回复的提示和格式
                     f"目前聊天内容如下\n---\n{history}\n---\n"
-                    f"你是{self.name}。请根据你的性格特质，自行判断是否要对当前话题做出回应。\n"
-                    f"如果你要参与发言，请使用<decision>yes</decision>，并在<response>中回应。\n"
-                    f"如果你不参与发言，请使用<decision>no</decision>，并在<think>中解释原因。\n"
+                    f"你是{self.name}，你的思考和言行将会受到你的MBTI性格特质的影响。你可以自行选择是否要对当前话题做出回应。\n"
+                    f"请根据以下格式回复：\n"
+                    f"如果你要参与发言，请使用“<decision>yes</decision>”，并使用“<response>你的回应</response>”，在“你的回应”中填入你的回应。\n"
+                    f"如果你不参与发言，请使用“<decision>no</decision>”，无需在<response>中回应。\n"
+                    f"如果想要对某个人说话，可以在回应中“@”对方。\n"
+                    f"请使用“<think>你的思考</think>”，在“你的思考”中解释参与或不参与的原因。\n"
                     f"回应应该反映你的MBTI性格特点,但请尽量不要明说MBTI相关内容。"
                 )
             }
@@ -161,7 +153,7 @@ class charactor(threading.Thread):
             """打印输出，包括决策、思考和回应"""
             print()
             print(f"{self.name}: ")
-            print(f"  🤔 决定{'参与' if decision == 'yes' else '不参与'}这个话题")
+            print(f"  🤔 决定{'参与' if decision == 'yes' else '不参与'}发言")
             if thought:
                 print(f"  💭 {thought}")  # 思考
             
@@ -187,17 +179,16 @@ class ChatRoom():
 
     # 聊天室背景设定
     chat_background = '''
-你是一名大学生，刚刚加入XXX大学的学生群。这个群聊中有来自不同专业、不同年级的同学。
-聊天内容可能包括：课业学习、校园生活、社团活动、兴趣爱好、最近热门话题等。
+你是一名大学生，刚刚加入香港大学的学生群。这个群聊中有来自不同专业、不同年级的同学。
+你可以从一下话题展开聊天：校园生活、课业学习、社团活动、兴趣爱好、感情爱情、近期热门话题等。
 
-在对话中请注意：
-1. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语
-2. 使用中文交流，不要在回答前加名字和冒号
-3. 不要重复之前已经说过的内容
-4. 根据你的性格特点、心理状态和日程安排来回应
-5. 每次回复不超过50字，保持对话流畅自然
-6. 不要把群聊聊成私聊，如果发现一直和某个人在聊天，请及时调整话题
-7. 敢于开启新话题，可以多个话题并行，随心所欲地聊天
+请注意对话要求：
+1. 基本要求：使用中文交流，不要在回答前加名字和冒号，不要重复之前说过的内容。
+2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次回复不超过50字，保持对话流畅自然和逻辑性。
+3. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语。
+4. 根据你的性格特点、心理状态和日程安排来回应。
+5. 敢于开启新话题，可以多个话题并行，随心所欲地聊天。
+6. 不要把群聊聊成私聊，如果发现一直和某个人在聊天，请及时调整话题。
 '''
     session_id = ""
     
@@ -264,7 +255,7 @@ class ChatRoom():
     def start_chat(self, chat_length):
         initial_message = {
             "sender": "system",
-            "content": "群公告: 欢迎来到香港大学的学生群聊！请随意讨论任何话题，保持友好交流。希望大家在这里度过愉快的时光！请刚进群的同学自我介绍一下。",
+            "content": "群公告: 欢迎来到香港大学的学生群聊！请同学们畅所欲言，希望大家交到好朋友，度过愉快的时光！刚进群的同学可以自我介绍一下~",
             "timestamp": datetime.now().isoformat()
         }
         self.chat_record.append(initial_message)
