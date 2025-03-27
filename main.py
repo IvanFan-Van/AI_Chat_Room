@@ -6,11 +6,9 @@ import json
 from datetime import datetime
 import time
 import re
-import threading # 多线程
-
-load_dotenv(find_dotenv()) # 加载环境变量, 使用langsmith监控
-
-#=====初始化LLM=====
+import threading            # 多线程
+load_dotenv(find_dotenv())  # 加载环境变量, 使用langsmith监控
+# =====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
 llm = ChatDeepSeek(
     model="deepseek-chat",
@@ -24,7 +22,7 @@ class Message(TypedDict):
     timestamp: str  # 添加时间戳
     thought: str    # 内心想法（think部分），对其他角色不可见
 
-#=====定义角色类=====
+# =====定义角色类=====
 # charactor继承Thread父类，并进行重写补充
 class charactor(threading.Thread):
     '''角色类:包括名字，mbti，所在聊天室，背景故事，心理活动'''
@@ -51,7 +49,7 @@ class charactor(threading.Thread):
         print("【线程结束】", self.name)
  
     def __del__(self):  # 重写父类析构函数
-        print("【线程销毁释放内存】", self.name)
+        pass
 
     # TODO 添加更多属性, 丰富性格特征描述, 添加程度描述
     def generate_personality(self):
@@ -125,14 +123,13 @@ class charactor(threading.Thread):
             """处理回复，提取决策、思考和回应部分"""
             decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
 
-            ######回合数减一#####若回合数为0，则结束对话，等待其他进程结束######
+            ######更新记录前回合数减一#####若回合数为0，则结束对话，等待其他进程结束######
             if self.chatroom.chat_round <= 0:
                 break
             self.chatroom.chat_round -= 1
 
             """更新对话历史，添加时间戳"""
             timestamp = datetime.now().isoformat()
-
             if decision == "yes" and chat_response.strip():
                 self.chatroom.chat_record.append({
                     "sender": self.name, 
@@ -156,17 +153,14 @@ class charactor(threading.Thread):
             print(f"  🤔 决定{'参与' if decision == 'yes' else '不参与'}发言")
             if thought:
                 print(f"  💭 {thought}")  # 思考
-            
             if decision == "yes" and chat_response.strip():
                 print(f"  🗣️ {chat_response}")  # 发言
-            
+
             # 每次角色回复后立即更新聊天记录
             self.chatroom.save_chat_history(incremental=True)
 
             # 模拟思考时间，防止回复过快
             time.sleep(1)
-
-
 
 # =====定义聊天室类=====  
 class ChatRoom():
@@ -183,8 +177,8 @@ class ChatRoom():
 你可以从一下话题展开聊天：校园生活、课业学习、社团活动、兴趣爱好、感情爱情、近期热门话题等。
 
 请注意对话要求：
-1. 基本要求：使用中文交流，不要在回答前加名字和冒号，不要重复之前说过的内容。
-2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次回复不超过50字，保持对话流畅自然和逻辑性。
+1. 使用中文交流，不要在回答前加名字和冒号，不要重复之前说过的内容。
+2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次回复在40字以内，保持对话流畅自然和逻辑性。
 3. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语。
 4. 根据你的性格特点、心理状态和日程安排来回应。
 5. 敢于开启新话题，可以多个话题并行，随心所欲地聊天。
@@ -268,8 +262,9 @@ class ChatRoom():
         # 等待所有线程结束
         for charactor in self.charactors:
             charactor.join()
-        print("聊天结束")
-
+        print("【聊天结束】")
+        for charactor in self.charactors:
+            charactor.__del__()
         # 聊天结束后，执行最终保存并显示提示信息
         self.save_chat_history(incremental=False)
 
