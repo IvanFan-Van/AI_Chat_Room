@@ -6,14 +6,14 @@ import json
 from datetime import datetime
 import time
 import re
-import threading            # 多线程
+import ast
+import concurrent.futures  # 并发处理
+
+from openai import OpenAI
+
 load_dotenv(find_dotenv())  # 加载环境变量, 使用langsmith监控
 # =====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
-llm = ChatDeepSeek(
-    model="deepseek-reasoner",
-    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
-)
 
 # =====定义消息类型=====
 class Message(TypedDict):
@@ -23,33 +23,26 @@ class Message(TypedDict):
     thought: str    # 内心想法（think部分），对其他角色不可见
 
 # =====定义角色类=====
-# charactor继承Thread父类，并进行重写补充
-class charactor(threading.Thread):
+class charactor():
     '''角色类:包括名字，mbti，所在聊天室，背景故事，心理活动'''
+    # TODO 添加心理活动、日程安排等属性
     name = 'undefined'
     background = 'undefined'
     mbti = [0.5, 0.5, 0.5, 0.5] #1/0 1st: E/I, 2nd: N/S, 3rd: F/T, 4th: J/P
+    like = {} # 角色:好感度，在0到100之间
     thoughts = []
     chatroom = None
 
     def __init__(self, name, mbti, chatroom):
-        threading.Thread.__init__(self)
         self.name = name
         self.mbti = mbti
         self.chatroom = chatroom
         self.background = '你是' + self.name + '。'
         self.generate_personality()
         self.thoughts = []
+        self.llm = OpenAI(api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1", base_url="https://api.deepseek.com")
 
-    
-    def run(self):      # 重写父类中的run函数
-        print("【线程开始】", self.name)
-        self.chat_multi()
-        print("【线程结束】", self.name)
  
-    def __del__(self):  # 重写父类析构函数
-        pass
-
     # TODO 添加更多属性, 丰富性格特征描述, 添加程度描述
     def generate_personality(self):
         """根据MBTI重新生成更加完整且符合实际的MBTI性格描述"""
@@ -88,39 +81,50 @@ class charactor(threading.Thread):
     # 自定义的线程任务函数
     def chat_multi(self):
         while self.chatroom.chat_round > 0:
-            print(f"【{self.name}】开始思考和回复")
-            starttime = datetime.now()
-            """构建对话历史"""
+            # 打印当前对话时间
+            print(f"\n【{self.name}】开始思考回复{datetime.now().strftime('%H:%M:%S')}")
+            """构建对话历史 更新角色好感度"""
             history = self.chatroom.format_chat_history()
             """构建系统消息 (角色设定 + 聊天背景) """
             system_message = {
-                "role": "system",
+                "role": "system", 
                 "content": self.background + "\n" + self.chatroom.chat_background
             }
-            """构建用户消息"""
+            """构建用户消息 (聊天记录 + 回复提示)"""
             user_message = {
                 "role": "user", 
                 "content": (
                     # 获取聊天记录，以及回复的提示和格式
                     f"目前聊天内容如下\n---\n{history}\n---\n"
                     f"你是{self.name}，你的思考和言行将会受到你的MBTI性格特质的影响。你可以自行选择是否要对当前话题做出回应。\n"
-                    f"请根据以下格式回复：\n"
-                    f"如果你要参与发言，请使用“<decision>yes</decision>”，并使用“<response>你的回应</response>”，在“你的回应”中填入你的回应。\n"
+                    f"请根据以下流程和格式回复：\n"
+                    # f"[1] 你对其他人的好感度：{self.like}。如果你发过言，请根据你上条发言之后的聊天记录，更新你对这些角色的好感度；没有则不用更新。\n"
+                    # f"格式：请使用“<like>好感度</like>”按原格式修改好感度，好感度范围在0到100之间，每次增减不超过10。\n"
+                    f"[2] 如果你要参与发言，请使用“<decision>yes</decision>”，并使用“<response>你的回应</response>”，在“你的回应”中填入你的回应。\n"
                     f"如果你不参与发言，请使用“<decision>no</decision>”，无需在<response>中回应。\n"
                     f"如果想要对某个人说话，可以在回应中“@”对方。\n"
-                    f"请使用“<think>你的思考</think>”，在“你的思考”中解释参与或不参与的原因。\n"
-                    f"回应应该反映你的MBTI性格特点,但请尽量不要明说MBTI相关内容。"
+                    #f"[3] 请使用“<think>你的思考</think>”，在“你的思考”中加入好感度增加或减少，参与或不参与发言的原因。\n"
+                    f"[3] 请使用“<think>你的思考</think>”，在“你的思考”中加入参与或不参与发言的原因。\n"
                 )
             }
             """构建 message 列表"""
             messages = [system_message, user_message]
 
             """获取回复"""
-            response = llm.invoke(messages)
-            response_content = response.content
-            """处理回复，提取决策、思考和回应部分"""
-            decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
+            response = self.llm.chat.completions.create(
+                model="deepseek-chat",
+                messages=messages,
+                stream=False
+            )
 
+            response_content = response.choices[0].message.content
+
+            """处理回复，提取决策、思考和回应部分"""
+            # decision, thought, chat_response, like = self.chatroom.extract_response_parts(response_content)
+            decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
+            # 更新好感度
+            # if like:
+            #     self.like = ast.literal_eval(like)
             ######更新记录前回合数减一#####若回合数为0，则结束对话，等待其他进程结束######
             if self.chatroom.chat_round <= 0:
                 break
@@ -145,6 +149,7 @@ class charactor(threading.Thread):
             }
             self.chatroom.full_record.append(full_message)
 
+            print(f"\n【{self.name}】思考完毫秒级回复{datetime.now().strftime('%H:%M:%S')}")
             """打印输出，包括决策、思考和回应"""
             print()
             print(f"{self.name}: ")
@@ -153,11 +158,10 @@ class charactor(threading.Thread):
                 print(f"  💭 {thought}")  # 思考
             if decision == "yes" and chat_response.strip():
                 print(f"  🗣️ {chat_response}")  # 发言
-
+            # if like:
+            #     print(f"  ❤️ {like}")
             # 每次角色回复后立即更新聊天记录
             self.chatroom.save_chat_history(incremental=True)
-
-            print(f"【{self.name}】思考和回复结束, 用时: {datetime.now() - starttime}")
 
 # =====定义聊天室类=====  
 class ChatRoom():
@@ -175,7 +179,7 @@ class ChatRoom():
 
 请注意对话要求：
 1. 使用中文交流，不要在回答前加名字和冒号，不要重复之前说过的内容。
-2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次自行选择5字/10字/20字以内的回复长度，保持对话流畅自然和逻辑性。
+2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次回复在40字以内，保持对话流畅自然和逻辑性。
 3. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语。
 4. 根据你的性格特点、心理状态和日程安排来回应。
 5. 敢于开启新话题，可以多个话题并行，随心所欲地聊天。
@@ -217,7 +221,11 @@ class ChatRoom():
         response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
         response = response_match.group(1).strip() if response_match else ""
         
-        return decision, thought, response
+        # # 提取好感度部分
+        # like_match = re.search(r'<like>(.*?)</like>', message_content, re.DOTALL)
+        # like = like_match.group(1).strip() if like_match else ""
+
+        return decision, thought, response#, like
 
     def save_chat_history(self, incremental=False):
         """将聊天历史保存到文件中
@@ -252,16 +260,27 @@ class ChatRoom():
         self.chat_record.append(initial_message)
         self.full_record.append(initial_message)
 
+        # 初始化角色好感度
+        # for charactor in self.charactors:
+        #     for other_charactor in self.charactors:
+        #         if other_charactor.name != charactor.name:
+        #             charactor.like[other_charactor.name] = 30
+        # 初始化对话轮数
         self.chat_round = chat_length
-        # 启动多线程
-        for charactor in self.charactors:
-            charactor.start()
-        # 等待所有线程结束
-        for charactor in self.charactors:
-            charactor.join()
+        # 使用ThreadPoolExecutor代替直接创建线程
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.charactors)) as executor:
+            # 提交所有角色的聊天任务
+            futures = [executor.submit(charactor.chat_multi) for charactor in self.charactors]
+            
+            # 等待所有任务完成并获取结果
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    print(result)  # 打印每个角色的聊天结果
+                except Exception as e:
+                    print(f"线程执行出错: {e}")
+        
         print("【聊天结束】")
-        for charactor in self.charactors:
-            charactor.__del__()
         # 聊天结束后，执行最终保存并显示提示信息
         self.save_chat_history(incremental=False)
 
@@ -271,9 +290,9 @@ if __name__ == "__main__":
     chat_room.add_charactor(charactor('Alice', [0.8, 0.7, 0.8, 0.4], chat_room))    # ENFP - 活泼外向，想象力丰富
     chat_room.add_charactor(charactor('Bob', [0.3, 0.4, 0.3, 0.7], chat_room))      # ISTJ - 内向严谨，逻辑性强
     chat_room.add_charactor(charactor('Charlie', [0.7, 0.3, 0.4, 0.2], chat_room))  # ESTP - 外向但实际，喜欢冒险
-    # chat_room.add_charactor(charactor('Diana', [0.2, 0.8, 0.9, 0.8], chat_room))    # INFJ - 深思熟虑，理想主义者
-    # chat_room.add_charactor(charactor('Eve', [0.6, 0.2, 0.8, 0.7], chat_room))      # ESFJ - 社交活跃，关心他人
-    # chat_room.add_charactor(charactor('Frank', [0.4, 0.6, 0.2, 0.3], chat_room))    # INTP - 内向思考者，喜欢独立思考
-    # chat_room.add_charactor(charactor('Grace', [0.9, 0.9, 0.4, 0.6], chat_room))    # ENTJ - 领导者，目标明确
-    # chat_room.add_charactor(charactor('Henry', [0.1, 0.1, 0.6, 0.1], chat_room))    # ISFP - 内向艺术家，喜欢创造
+    chat_room.add_charactor(charactor('Diana', [0.2, 0.8, 0.9, 0.8], chat_room))    # INFJ - 深思熟虑，理想主义者
+    chat_room.add_charactor(charactor('Eve', [0.6, 0.2, 0.8, 0.7], chat_room))      # ESFJ - 社交活跃，关心他人
+    chat_room.add_charactor(charactor('Frank', [0.4, 0.6, 0.2, 0.3], chat_room))    # INTP - 内向思考者，喜欢独立思考
+    chat_room.add_charactor(charactor('Grace', [0.9, 0.9, 0.4, 0.6], chat_room))    # ENTJ - 领导者，目标明确
+    chat_room.add_charactor(charactor('Henry', [0.1, 0.1, 0.6, 0.1], chat_room))    # ISFP - 内向艺术家，喜欢创造
     chat_room.start_chat(50)  # 设置对话轮数
