@@ -10,6 +10,11 @@ llm = ChatDeepSeek(
     api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
 )
 
+scheduler = ChatDeepSeek(
+    model="deepseek-chat",
+    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
+)
+
 # =====定义角色类=====
 class charactor(threading.Thread):
     '''角色类:包括名字，mbti，所在聊天室，背景故事，心理活动，日程安排'''
@@ -19,48 +24,106 @@ class charactor(threading.Thread):
     background = 'undefined'
     thoughts = []
     schedule = {}
-
-    def __init__(self, name, mbti, chatroom):
+    
+    def __init__(self, name, mbti, chatroom, background):
         threading.Thread.__init__(self)
         self.name = name
         self.mbti = mbti
         self.chatroom = chatroom
-        self.background = '你是' + self.name + '。'
-        self.generate_personality()
+        self.background = '你是' + self.name + '。' + background + "\n\n" + self.generate_mbti_prompt()
         self.thoughts = []
         self.schedule = {}
 
     def run(self):
         print("【线程开始】", self.name)
-        self.chat_multi()
+        self.generate_response()
         print("【线程结束】", self.name)
 
     def __del__(self):
         pass
 
-    def generate_personality(self):
-        """根据MBTI生成性格描述"""
-        description = ""
-        if self.mbti[0] > 0.5:
-            description += "你较为外向：你在与他人互动时能快速充电，乐观开朗，擅长在社交场合中表达自我。\n"
-        else:
-            description += "你较为内向：你倾向于从独处和内省中恢复能量，注重深入思考，显得沉着稳重。\n"
-        if self.mbti[1] > 0.5:
-            description += "你偏好直觉：你善于捕捉未来趋势和抽象概念，喜欢探索可能性，富有创意和远见。\n"
-        else:
-            description += "你偏好实感：你注重细节和现实经验，依靠切实的信息做出决策，务实且实际。\n"
-        if self.mbti[2] > 0.5:
-            description += "你更倾向情感：你在决策时重视情感和人际关系，容易共情，追求和谐与共鸣。\n"
-        else:
-            description += "你更倾向理性：你依赖分析与逻辑做出判断，擅长客观解决问题，强调事实与效率。\n"
-        if self.mbti[3] > 0.5:
-            description += "你偏好判断：你喜欢结构化和计划性的生活，注重秩序与明确性，擅长提前规划。\n"
-        else:
-            description += "你偏好知觉：你灵活自如，乐于接受变化与新鲜事物，倾向于保持选择的开放性。\n"
-        basic_info = self.background.split("\n\n")[0]
-        self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n你的思考和言行将会受上述性格特质影响。"
+    # def generate_personality(self):
+    #     """根据MBTI生成性格描述"""
+    #     description = ""
+    #     if self.mbti[0] > 0.5:
+    #         description += "你较为外向：你在与他人互动时能快速充电，乐观开朗，擅长在社交场合中表达自我。\n"
+    #     else:
+    #         description += "你较为内向：你倾向于从独处和内省中恢复能量，注重深入思考，显得沉着稳重。\n"
+    #     if self.mbti[1] > 0.5:
+    #         description += "你偏好直觉：你善于捕捉未来趋势和抽象概念，喜欢探索可能性，富有创意和远见。\n"
+    #     else:
+    #         description += "你偏好实感：你注重细节和现实经验，依靠切实的信息做出决策，务实且实际。\n"
+    #     if self.mbti[2] > 0.5:
+    #         description += "你更倾向情感：你在决策时重视情感和人际关系，容易共情，追求和谐与共鸣。\n"
+    #     else:
+    #         description += "你更倾向理性：你依赖分析与逻辑做出判断，擅长客观解决问题，强调事实与效率。\n"
+    #     if self.mbti[3] > 0.5:
+    #         description += "你偏好判断：你喜欢结构化和计划性的生活，注重秩序与明确性，擅长提前规划。\n"
+    #     else:
+    #         description += "你偏好知觉：你灵活自如，乐于接受变化与新鲜事物，倾向于保持选择的开放性。\n"
+    #     basic_info = self.background.split("\n\n")[0]
+    #     self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n你的思考和言行将会受上述性格特质影响。"
+
+    def generate_mbti_prompt(self):
+        """
+        根据MBTI倾向程度生成角色扮演提示词
+        
+        参数:
+        mbti_weights - 包含4个值的列表 [I倾向, N倾向, F倾向, P倾向]，每个值范围0~1
+                    (例如 [0.3, 0.6, 0.4, 0.2] 表示 30%内向, 60%直觉, 40%情感, 20%感知)
+        
+        返回:
+        角色扮演提示词字符串
+        """
+        if len(self.mbti) != 4 or any(not 0 <= w <= 1 for w in self.mbti):
+            raise ValueError("输入必须是一个包含4个0~1之间数值的列表")
+        
+        i, n, f, p = self.mbti
+        e, s, t, j = 1 - i, 1 - n, 1 - f, 1 - p
+        
+        # 确定MBTI类型
+        ei = "I" if i > 0.5 else "E"
+        sn = "N" if n > 0.5 else "S"
+        tf = "F" if f > 0.5 else "T"
+        jp = "P" if p > 0.5 else "J"
+        
+        mbti_type = ei + sn + tf + jp
+        
+        # 各维度描述
+        ei_desc = {
+            "E": f"外向型(倾向程度{int(e * 100)}%)，喜欢与人互动，从社交中获得能量",
+            "I": f"内向型(倾向程度{int(i * 100)}%)，喜欢独处，从内心世界获得能量"
+        }
+        
+        sn_desc = {
+            "S": f"实感型(倾向程度{int(s * 100)}%)，注重现实和具体细节，关注事实",
+            "N": f"直觉型(倾向程度{int(n * 100)}%)，关注大局和可能性，喜欢抽象概念"
+        }
+        
+        tf_desc = {
+            "T": f"思考型(倾向程度{int(t * 100)}%)，做决定时更注重逻辑和客观分析",
+            "F": f"情感型(倾向程度{int(f * 100)}%)，做决定时更注重价值观和人际关系"
+        }
+        
+        jp_desc = {
+            "J": f"判断型(倾向程度{int(j * 100)}%)，喜欢有计划、有条理的生活方式",
+            "P": f"感知型(倾向程度{int(p * 100)}%)，喜欢灵活、自发的生活方式"
+        }
+        
+        # 组合提示词
+        prompt = f"""请你扮演一个MBTI性格类型为{mbti_type}的人。你的性格特点如下：
+    1. {ei_desc[ei]}
+    2. {sn_desc[sn]}
+    3. {tf_desc[tf]}
+    4. {jp_desc[jp]}
+
+    请完全按照这个性格特征来回应我，包括语言风格、思考方式和行为模式。你的回答应该自然、真实地反映{mbti_type}型人格的典型特征。你可以根据具体情境自由发挥，但要始终保持{mbti_type}型人格的核心特质。"""
+        
+        return prompt
 
     def generate_schedule(self):
+        starttime = time.time()
+
         """生成日程安排，仅存储在 agent 内部和 chatroom.participants 中"""
         system_content = (
             self.background + "\n\n"
@@ -76,11 +139,15 @@ class charactor(threading.Thread):
             "  \"19:00-20:00\": \"晚餐聚会\"\n"
             "}"
         )
-        system_message = {"role": "system", "content": system_content}
+        system_message = {"role": "user", "content": system_content}
         messages = [system_message]
 
-        response = llm.invoke(messages)
+        response = scheduler.invoke(messages)
         response_content = response.content.strip()
+
+        endtime = time.time()
+        print(f"生成 {self.name} 的日程用时：{endtime - starttime}")
+
         try:
             self.schedule = json.loads(response_content)
         except json.JSONDecodeError:
@@ -104,8 +171,10 @@ class charactor(threading.Thread):
             "timestamp": datetime.now().isoformat()
         })
 
-    def chat_multi(self):
+    def generate_response(self):
         while self.chatroom.chat_round > 0:
+            starttime = time.time()
+
             system_content = self.background + "\n" + self.chatroom.chat_background
             system_message = {"role": "system", "content": system_content}
             messages = [system_message]
@@ -114,6 +183,7 @@ class charactor(threading.Thread):
                 "role": "user",
                 "content": (
                     f"目前聊天内容如下\n---\n{history}\n---\n"
+                    f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                     f"你是{self.name}，你的日程安排如下：\n{json.dumps(self.schedule, ensure_ascii=False)}\n"
                     f"你的思考和言行受MBTI性格特质和日程安排影响。可选择是否回应当前话题。\n"
                     f"请按以下格式回复：\n"
@@ -127,6 +197,9 @@ class charactor(threading.Thread):
             response = llm.invoke(messages)
             response_content = response.content
             decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
+
+            endtime = time.time()
+            print(f"生成 {self.name} 的回应用时：{endtime - starttime}")
 
             if self.chatroom.chat_round <= 0:
                 break

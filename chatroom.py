@@ -25,15 +25,8 @@ class ChatRoom():
     chat_record = []
     full_record = []
     chat_background = '''
-闲聊群, 随便聊天, 无主题限制.
 
-请注意对话要求：
-1. 使用中文交流，不要在回答前加名字和冒号，不要重复之前说过的内容。
-2. 参考微信、QQ等社交媒体的聊天记录的发言回复篇幅长短，每次回复在40字以内，保持对话流畅自然和逻辑性。
-3. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语。
-4. 根据你的性格特点、心理状态和日程安排来回应。
-5. 敢于开启新话题，可以多个话题并行，随心所欲地聊天。
-6. 不要把群聊聊成私聊，如果发现一直和某个人在聊天，请及时调整话题。
+你现在在一个大学群内...
 '''
     session_id = ""
 
@@ -56,7 +49,7 @@ class ChatRoom():
 
     def format_chat_history(self):
         history = ""
-        for message in self.chat_record:
+        for message in self.chat_record[-20:]:
             history += f"{message['sender']}: {message['content']}\n"
         return history
 
@@ -91,8 +84,8 @@ class ChatRoom():
             charactor.generate_schedule()
         print("=== 开始聊天 ===")
         initial_message = {
-            "sender": "system",
-            "content": "群公告: 欢迎来到香港大学的学生群聊！请同学们畅所欲言，希望大家交到好朋友，度过愉快的时光！刚进群的同学可以自我介绍一下~",
+            "sender": "David",
+            "content": "好可怕, 刚刚教学楼爆炸了",
             "timestamp": datetime.now().isoformat()
         }
         self.chat_record.append(initial_message)
