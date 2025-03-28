@@ -1,12 +1,12 @@
 [project]
-name = "ai-chat-room"
+name = "langgraph-chat"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "ivan",email = "ivanfan@connect.hku.hk"}
+    {name = "RyanWang123456",email = "u3622342@connect.hku.hk"}
 ]
 readme = "README.md"
-requires-python = ">=3.10, <4.0"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "fastapi (>=0.115.11,<0.116.0)",
     "langgraph (>=0.3.5,<0.4.0)",
