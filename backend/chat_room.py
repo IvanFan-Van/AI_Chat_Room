@@ -1,85 +1,10 @@
-from typing import Annotated, TypedDict
-from dataclasses import dataclass
-from dotenv import load_dotenv, find_dotenv
-from pathlib import Path
-import os
+import re
 import json
 from datetime import datetime
-import time
-import re
+from pathlib import Path
+from .llm import llm
 
-load_dotenv(find_dotenv()) # 加载环境变量, 使用langsmith监控
-
-LOG_FOLDER = Path("./frontend/log") # 日志文件夹
-
-#=====初始化LLM=====
-from langchain_deepseek import ChatDeepSeek
-llm = ChatDeepSeek(
-    model="deepseek-reasoner",
-    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
-)
-
-# =====定义消息类型=====
-class Message(TypedDict):
-    sender: str
-    content: str    # 实际对话内容（response部分）
-    timestamp: str  # 添加时间戳
-    thought: str    # 内心想法（think部分），对其他角色不可见
-
-#=====定义角色类=====
-class charactor():
-    '''角色类:包括名字，mbti，背景故事，心理活动'''
-    name = 'undefined'
-    mbti = [0.5, 0.5, 0.5, 0.5] #1/0 1st: E/I, 2nd: N/S, 3rd: F/T, 4th: J/P
-    background = 'undefined'
-    
-    def __init__(self, name, mbti, background):
-        self.name = name
-        self.mbti = mbti
-        self.background = '你是' + self.name + '。' + background
-        self.generate_personality()
-        
-    # TODO 添加更多属性, 丰富性格特征描述, 添加程度描述
-    def generate_personality(self):
-        """根据MBTI重新生成更加完整且符合实际的MBTI性格描述"""
-        description = ""
-        # Extraversion vs. Introversion
-        if self.mbti[0] > 0.5:
-            description += "你较为外向：你在与他人互动时能快速充电，乐观开朗，擅长在社交场合中表达自我。\n"
-        else:
-            description += "你较为内向：你倾向于从独处和内省中恢复能量，注重深入思考，显得沉着稳重。\n"
-        # Sensing vs. Intuition
-        if self.mbti[1] > 0.5:
-            description += "你偏好直觉：你善于捕捉未来趋势和抽象概念，喜欢探索可能性，富有创意和远见。\n"
-        else:
-            description += "你偏好实感：你注重细节和现实经验，依靠切实的信息做出决策，务实且实际。\n"
-        # Feeling vs. Thinking
-        if self.mbti[2] > 0.5:
-            description += "你更倾向情感：你在决策时重视情感和人际关系，容易共情，追求和谐与共鸣。\n"
-        else:
-            description += "你更倾向理性：你依赖分析与逻辑做出判断，擅长客观解决问题，强调事实与效率。\n"
-        # Judging vs. Perceiving
-        if self.mbti[3] > 0.5:
-            description += "你偏好判断：你喜欢结构化和计划性的生活，注重秩序与明确性，擅长提前规划。\n"
-        else:
-            description += "你偏好知觉：你灵活自如，乐于接受变化与新鲜事物，倾向于保持选择的开放性。\n"
-        
-        # 更新背景信息中的性格描述部分
-        basic_info = self.background.split("\n\n")[0]
-        self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n在对话中请体现上述性格特质。"
-        self.background += (
-            "\n\n你不必对每一个话题都做出回应。根据你的性格特点，评估当前话题是否值得你参与回应。"
-            "\n每一次活动请按照以下格式回复："
-            "\n1. 首先，决定你是否要对当前话题发表回应："
-            "\n   - 使用 <decision>yes</decision> 表示你决定参与这个话题"
-            "\n   - 使用 <decision>no</decision> 表示你决定不参与这个话题"
-            "\n2. 然后，无论你决定是否参与，都需要解释你的决定理由："
-            "\n   - 使用 <think>你的想法</think> 包裹你的内心活动或思考过程，说明你为何决定参与或不参与"
-            "\n3. 如果你决定参与，请提供你的回应："
-            "\n   - 使用 <response>你的回应</response> 包裹你要在群里说的话"
-            "\n如果你决定不参与，则无需填写<response>部分"
-        )
-
+LOG_FOLDER = Path("../frontend/log") # 日志文件夹
 
 # =====定义聊天室类=====  
 class ChatRoom():
@@ -91,7 +16,16 @@ class ChatRoom():
 
     # 背景设定
     chat_background = '''
-这是王大耳, 王恒, 和爱丽丝三个人的小群. 他们是非常要好的朋友, 经常一起在这个小群里讨论和吐槽.
+你是一名大学生，刚刚加入XXX大学的学生群。这个群聊中有来自不同专业、不同年级的同学。
+聊天内容可能包括：课业学习、校园生活、社团活动、兴趣爱好、最近热门话题等。
+
+在对话中请注意：
+1. 使用符合当代大学生的日常语言风格，可以自然地使用一些网络用语
+2. 使用中文交流，不要在回答前加名字和冒号
+3. 使用口语化表达（如“哈哈哈”、“emmm”、“awsl”）
+4. 可适当加入表情符号（如😂、👀、👍）或颜文字（如~、>_<）
+4. 根据你的性格特点、心理状态和日程安排来回应
+5. 每次回复不超过50字，保持对话流畅自然
 '''
     session_id = ""
     
@@ -165,8 +99,8 @@ class ChatRoom():
 
     def start_chat(self, chat_length):
         initial_message = {
-            "sender": "王恒",
-            "content": "卧槽你们看到那个新闻了吗, 前几天有个开宝马的女的, 撞了人还不道歉, 不仅很嚣张的对着镜头骂人, 还说什么她是个有钱人, 你们这些穷人根本不配和她争论.",
+            "sender": "system",
+            "content": "群公告: 欢迎来到XXX大学的学生群聊！请随意讨论任何话题，保持友好交流。希望大家在这里度过愉快的时光！请刚进群的同学自我介绍一下。",
             "timestamp": datetime.now().isoformat()
         }
         self.chat_record.append(initial_message)
@@ -191,6 +125,8 @@ class ChatRoom():
                     "role": "user", 
                     "content": (
                         f"目前聊天内容如下\n---\n{history}\n---\n"
+                        f"当前你的情绪：{'较高' if charactor.mood > 0.6 else '一般'}, 剩余精力：{charactor.energy:.1f}。"
+                        f"如果精力低于0.3或情绪低落，你可能更倾向于不参与讨论。"
                         f"你是{charactor.name}。请根据你的性格特质，自行判断是否要对当前话题做出回应。\n"
                         f"如果你认为当前话题值得你参与，请使用<decision>yes</decision>并在<response>中回应。\n"
                         f"如果你认为当前话题不适合你参与，请使用<decision>no</decision>，并在<think>中解释原因。\n"
@@ -241,13 +177,7 @@ class ChatRoom():
         # 聊天结束后，执行最终保存并显示提示信息
         self.save_chat_history(incremental=False)
 
-       
-if __name__ == "__main__":
-    chat_room = ChatRoom()
-    # 增加更多角色信息
-    chat_room.add_charactor(charactor('爱丽丝', [0.8, 0.7, 0.8, 0.4], background="你是一个黑发女大学生, 平日里喜欢刷贴吧和小红书, 热爱弹吉他和钢琴. 你和王大耳和王恒从小就在一起玩, 是非常要好的朋友"))  # ENFP - 活泼外向，想象力丰富
-    chat_room.add_charactor(charactor('王大耳', [0.3, 0.4, 0.3, 0.7], background="你是一个中年研究人员, 苦于为老板打工, 没什么散钱, 为人木讷但是热心. 你和爱丽丝和王恒从小就在一起玩, 是非常要好的朋友"))    # ISTJ - 内向严谨，逻辑性强
-    chat_room.add_charactor(charactor('王恒', [0.7, 0.3, 0.4, 0.2], background="你是衡水二中门口的混混, 看起来凶狠可怕, 但是实际上是个热爱探险的小男孩. 只是小时候父母因为车祸双亡. 导致变得孤僻.你和王大耳和爱丽丝从小就在一起玩, 是非常要好的朋友")) # ESTP - 外向但实际，喜欢冒险
-    # chat_room.add_charactor(charactor('Diana', [0.2, 0.8, 0.9, 0.8]))  # INFJ - 深思熟虑，理想主义者
-
-    chat_room.start_chat(5)
+    def __str__(self):
+        character_list = '\n'.join([str(character) for character in self.charactors])
+        return f"聊天室包含{self.num_charactors}个角色:" + "\n" + f"{character_list}"
+    
