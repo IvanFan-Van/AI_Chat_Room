@@ -2,11 +2,17 @@ import threading
 import json
 from datetime import datetime
 import time
+import random
 
 # =====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
-llm = ChatDeepSeek(
+llm_chat = ChatDeepSeek(
     model="deepseek-chat",
+    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
+)
+
+llm_reasoner = ChatDeepSeek(
+    model="deepseek-reasoner",
     api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
 )
 
@@ -41,28 +47,6 @@ class charactor(threading.Thread):
 
     def __del__(self):
         pass
-
-    # def generate_personality(self):
-    #     """根据MBTI生成性格描述"""
-    #     description = ""
-    #     if self.mbti[0] > 0.5:
-    #         description += "你较为外向：你在与他人互动时能快速充电，乐观开朗，擅长在社交场合中表达自我。\n"
-    #     else:
-    #         description += "你较为内向：你倾向于从独处和内省中恢复能量，注重深入思考，显得沉着稳重。\n"
-    #     if self.mbti[1] > 0.5:
-    #         description += "你偏好直觉：你善于捕捉未来趋势和抽象概念，喜欢探索可能性，富有创意和远见。\n"
-    #     else:
-    #         description += "你偏好实感：你注重细节和现实经验，依靠切实的信息做出决策，务实且实际。\n"
-    #     if self.mbti[2] > 0.5:
-    #         description += "你更倾向情感：你在决策时重视情感和人际关系，容易共情，追求和谐与共鸣。\n"
-    #     else:
-    #         description += "你更倾向理性：你依赖分析与逻辑做出判断，擅长客观解决问题，强调事实与效率。\n"
-    #     if self.mbti[3] > 0.5:
-    #         description += "你偏好判断：你喜欢结构化和计划性的生活，注重秩序与明确性，擅长提前规划。\n"
-    #     else:
-    #         description += "你偏好知觉：你灵活自如，乐于接受变化与新鲜事物，倾向于保持选择的开放性。\n"
-    #     basic_info = self.background.split("\n\n")[0]
-    #     self.background = basic_info + "\n\n你的MBTI性格描述：\n" + description + "\n你的思考和言行将会受上述性格特质影响。"
 
     def generate_mbti_prompt(self):
         """
@@ -165,12 +149,6 @@ class charactor(threading.Thread):
                 participant["schedule"] = self.schedule
                 break
 
-    def add_thought(self, thought):
-        self.thoughts.append({
-            "thought": thought,
-            "timestamp": datetime.now().isoformat()
-        })
-
     def generate_response(self):
         while self.chatroom.chat_round > 0:
             starttime = time.time()
@@ -194,12 +172,19 @@ class charactor(threading.Thread):
                 )
             }
             messages.append(user_message)
-            response = llm.invoke(messages)
+
+            prob = random.uniform(0, 1)
+            if prob < 0.3:
+                print(f"【{self.name}】使用思考模型...")
+                response = llm_reasoner.invoke(messages)
+            else:
+                print(f"【{self.name}】使用聊天模型...")
+                response = llm_chat.invoke(messages)
             response_content = response.content
             decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
 
             endtime = time.time()
-            print(f"生成 {self.name} 的回应用时：{endtime - starttime}")
+            
 
             if self.chatroom.chat_round <= 0:
                 break
@@ -228,6 +213,7 @@ class charactor(threading.Thread):
                 print(f"  💭 {thought}")
             if decision == "yes" and chat_response.strip():
                 print(f"  🗣️ {chat_response}")
-
+            
+            print(f"生成 {self.name} 的回应用时：{endtime - starttime}")
             self.chatroom.save_chat_history(incremental=True)
             time.sleep(1)

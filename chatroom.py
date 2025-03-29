@@ -3,10 +3,7 @@ from dotenv import load_dotenv, find_dotenv
 import os
 import json
 from datetime import datetime
-import time
 import re
-import threading
-from character import charactor, llm
 load_dotenv(find_dotenv())
 
 # =====定义消息类型=====
@@ -30,12 +27,17 @@ class ChatRoom():
 '''
     session_id = ""
 
-    def __init__(self):
+    def __init__(self, initial_message=None):
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         os.makedirs(f"log/{self.session_id}", exist_ok=True)
         self.chat_record = []
         self.full_record = []
         self.participants = []
+        self.initial_message = initial_message if initial_message else {
+            "sender": "David",
+            "content": "好可怕, 刚刚教学楼爆炸了",
+            "timestamp": datetime.now().isoformat()
+        }
 
     def add_charactor(self, charactor):
         self.num_charactors += 1
@@ -83,11 +85,7 @@ class ChatRoom():
         for charactor in self.charactors:
             charactor.generate_schedule()
         print("=== 开始聊天 ===")
-        initial_message = {
-            "sender": "David",
-            "content": "好可怕, 刚刚教学楼爆炸了",
-            "timestamp": datetime.now().isoformat()
-        }
+        initial_message = self.initial_message.copy()
         self.chat_record.append(initial_message)
         self.full_record.append(initial_message)
 

@@ -160,6 +160,8 @@ function displayChatData(data) {
     
     // Display all messages (or filter if needed)
     data.messages.forEach(message => {
+        if (!message.content) return; // Skip empty messages
+
         const messageElement = document.createElement('div');
         messageElement.className = `message ${message.sender.toLowerCase()}`;
         
