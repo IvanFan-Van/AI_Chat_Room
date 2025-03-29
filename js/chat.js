@@ -50,12 +50,12 @@ async function populateLogSelection() {
         logItem.dataset.path = log.path;
         
         const formattedDate = new Date(log.timestamp).toLocaleString('zh-CN');
-        
+
         logItem.innerHTML = `
             <div class="log-info">
                 <div class="log-id">会话: ${log.id}</div>
                 <div class="log-date">时间: ${formattedDate}</div>
-                <div class="log-participants">参与者: ${log.participants.join(', ')}</div>
+                <div class="log-participants">参与者: ${log.participants.map(p => p.name).join(', ')}</div>
                 <div class="log-preview">${log.firstMessage}</div>
             </div>
             <div class="log-actions">
@@ -151,11 +151,41 @@ function displayChatData(data) {
     // Display session information
     document.getElementById('session-id').textContent = `会话ID: ${data.session_id}`;
     document.getElementById('timestamp').textContent = `时间: ${formatDateTime(data.timestamp)}`;
-    document.getElementById('participants').textContent = `参与者: ${data.participants.join(', ')}`;
+    document.getElementById('participants').textContent = `参与者: ${data.participants.map(p => p.name).join(', ')}`;
     document.getElementById('background').textContent = data.background;
     
     // Display messages
     const chatMessagesElement = document.getElementById('chat-messages');
+    
+    // Check if user was at bottom before update (within 20px tolerance)
+    const isAtBottom = Math.abs(
+        (chatMessagesElement.scrollHeight - chatMessagesElement.scrollTop) - 
+        chatMessagesElement.clientHeight
+    ) < 20;
+    
+    // Store current scroll position
+    const scrollPosition = chatMessagesElement.scrollTop;
+    
+    // Create a mapping of senders to color classes
+    const senderColors = {};
+    const colorClasses = [
+        'sender-color-1', 
+        'sender-color-2', 
+        'sender-color-3', 
+        'sender-color-4',
+        'sender-color-5',
+        'sender-color-6'
+    ];
+    
+    // Assign a color class to each unique sender
+    let colorIndex = 0;
+    data.messages.forEach(message => {
+        if (!senderColors[message.sender]) {
+            senderColors[message.sender] = colorClasses[colorIndex % colorClasses.length];
+            colorIndex++;
+        }
+    });
+    
     chatMessagesElement.innerHTML = '';
     
     // Display all messages (or filter if needed)
@@ -163,7 +193,8 @@ function displayChatData(data) {
         if (!message.content) return; // Skip empty messages
 
         const messageElement = document.createElement('div');
-        messageElement.className = `message ${message.sender.toLowerCase()}`;
+        // Apply both sender name class and color class
+        messageElement.className = `message ${message.sender.toLowerCase()} ${senderColors[message.sender]}`;
         
         const bubbleElement = document.createElement('div');
         bubbleElement.className = 'bubble';
@@ -197,8 +228,16 @@ function displayChatData(data) {
         chatMessagesElement.appendChild(messageElement);
     });
     
-    // Scroll to the bottom of the chat
-    chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+    // Restore scroll position appropriately
+    if (isAtBottom || !currentChatData) {
+        // If user was at bottom or this is first load, scroll to bottom
+        chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+    } else {
+        // Otherwise maintain scroll position
+        setTimeout(() => {
+            chatMessagesElement.scrollTop = scrollPosition;
+        }, 0);
+    }
 }
 
 // Helper function to format datetime
