@@ -143,10 +143,10 @@ class Character(threading.Thread):
             
             # 基于性格特质调整概率
             # 内向型人格可能更少参与对话
-            if self.mbti[0] > 0.7:  # 高度内向
+            if self.mbti[0] == "I":  # 高度内向
                 response_prob *= 0.8
             # 外向型人格可能更多参与对话
-            elif self.mbti[0] < 0.3:  # 高度外向
+            elif self.mbti[0] == "E":  # 高度外向
                 response_prob *= 1.2
                 
             # 限制范围
@@ -157,7 +157,6 @@ class Character(threading.Thread):
             messages = PromptBuilder.build_messages(
                 self.name,
                 self.background,
-                self.chatroom.chat_background,
                 history,
                 current_time,
                 current_activity

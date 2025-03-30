@@ -60,7 +60,6 @@ class ChatRoom:
         self.chat_record = []  # 可见聊天记录
         self.full_record = []  # 完整聊天记录（包含内部状态）
         self.chat_round = 0  # 聊天轮数
-        self.chat_background = ""  # 聊天背景描述
         
         # 设置初始消息
         self.initial_message = initial_message if initial_message else None

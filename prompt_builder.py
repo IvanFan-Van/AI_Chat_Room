@@ -147,10 +147,11 @@ class PromptBuilder:
         return "你没有日程安排"
     
     @staticmethod
-    def build_messages(name: str, background: str, chat_background: str, 
+    def build_messages(name: str, background: str, 
                       chat_history: str, current_time: datetime, 
                       current_activity: Optional[str] = None) -> List[Dict[str, str]]:
         """构建用于LLM输入的完整消息数组"""
+        chat_background = ""
         system_message = PromptBuilder.build_system_message(background, chat_background)
         schedule_prompt = PromptBuilder.format_schedule_prompt(current_time, current_activity)
         user_message = PromptBuilder.build_user_message(name, chat_history, schedule_prompt)
