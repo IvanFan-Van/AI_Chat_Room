@@ -54,18 +54,12 @@ class Character(threading.Thread):
         self.name = name
         self.mbti = mbti
         self.chatroom = chatroom
+        self.background = background
         
         # 创建聊天意愿管理器
         self.willingness_manager = WillingnessManger(name)
-        
-        # 使用PromptBuilder生成MBTI提示
-        mbti_prompt = PromptBuilder.build_mbti_prompt(self.mbti)
-        
-        # 构建完整背景
-        self.background = PromptBuilder.build_character_background(
-            self.name, background, mbti_prompt
-        )
-        
+
+
         self.thoughts = []
         self.schedule = {}
 

@@ -20,13 +20,6 @@ class PromptBuilder:
 7. 偶尔可以犯一些小的拼写错误或用词不当，这样更接近真人聊天
 8. 避免过度文雅或结构化的语言，大学生更多使用简洁直接的表达方式
 9. 要求简短明了，避免冗长的句子和复杂的结构
-
-示例差异：
-❌ "我觉得这很有趣 (微笑)"
-✅ "哈哈这也太有意思了吧！"
-
-❌ "我今天很开心，因为我拿到了好成绩 (开心)"
-✅ "天啊！今天拿到成绩单了，超开心的！！"
 """
 
     @staticmethod
@@ -182,12 +175,12 @@ if __name__ == "__main__":
     # 测试角色背景生成
     background = PromptBuilder.build_character_background(name, raw_background, mbti_prompt)
     print("\n===完整角色背景===")
-    print(background[:200] + "...")  # 只显示开头部分
+    print(background)  # 只显示开头部分
     
     # 测试日程提示生成
     schedule_prompt = PromptBuilder.build_schedule_prompt(name, background)
     print("\n===日程生成提示===")
-    print(schedule_prompt[:200] + "...")  # 只显示开头部分
+    print(schedule_prompt)  # 只显示开头部分
     
     # 测试消息构建
     chat_background = "你现在在一个大学的大学群内聊天"
@@ -203,5 +196,7 @@ if __name__ == "__main__":
     print("\n===消息构建结果===")
     print("系统消息长度:", len(messages[0]["content"]))
     print("用户消息长度:", len(messages[1]["content"]))
+    print("\n系统消息内容:")
+    print(messages[0]["content"])
     print("\n用户消息内容:")
     print(messages[1]["content"])
