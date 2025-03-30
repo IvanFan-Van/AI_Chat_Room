@@ -26,7 +26,7 @@ class ChatRoom():
     full_record = []
     chat_background = '''
 
-你现在在一个大学群内...
+这是一个普通的周三，香港大学校园里春意盎然，空气中夹杂着微微的海风。四位朋友——David、Emily、George 和 Helen——各自忙碌于学业、社团和个人兴趣，却在一天中多次交汇。他们没有惊心动魄的冒险，只有日常的点滴互动，彼此的关系在这些小事中得以体现。
 '''
     session_id = ""
 
@@ -85,7 +85,7 @@ class ChatRoom():
         print("=== 开始聊天 ===")
         initial_message = {
             "sender": "David",
-            "content": "好可怕, 刚刚教学楼爆炸了",
+            "content": "嘿，周末天气不错，要不我们搞个校园露天电影夜？社团好久没活动了！",
             "timestamp": datetime.now().isoformat()
         }
         self.chat_record.append(initial_message)

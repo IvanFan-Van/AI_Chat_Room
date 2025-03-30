@@ -33,9 +33,13 @@ class charactor(threading.Thread):
         self.background = '你是' + self.name + '。' + background + "\n\n" + self.generate_mbti_prompt()
         self.thoughts = []
         self.schedule = {}
+        self.busy_until = None # 新增：表示当前是否处于“忙碌”状态（如开会
+        self.is_busy = False # 新增：忙碌状态的结束时间
+
 
     def run(self):
         print("【线程开始】", self.name)
+        self.generate_schedule()  # 先生成日程
         self.generate_response()
         print("【线程结束】", self.name)
 
@@ -127,16 +131,21 @@ class charactor(threading.Thread):
         """生成日程安排，仅存储在 agent 内部和 chatroom.participants 中"""
         system_content = (
             self.background + "\n\n"
-            "你是一名香港大学的学生，根据你的MBTI性格特点和兴趣，生成你今天的合理日程安排，要包含你的兴趣。\n"
+            "你是一名香港大学的学生，根据你的MBTI性格特点和兴趣，生成你今天的合理日程安排。\n"
             "要求：\n"
             "1. 使用24小时制（如 08:00-09:00），时间段不得重叠。\n"
             "2. 每个活动描述控制在20字以内，符合你的性格特点。\n"
-            "3. 至少安排3项活动，覆盖上午、下午和晚上。\n"
+            "3. 必须包含以下必选活动：睡觉时间（至少6小时）、三餐时间（早餐、午餐、晚餐）、至少1小时休息时间。\n"
+            "4. 此外，至少安排3项个性化活动（例如学习、社交、兴趣等），覆盖上午、下午和晚上。\n"
             "仅返回 JSON 格式结果，不添加任何额外说明，例如：\n"
             "{\n"
-            "  \"08:00-09:00\": \"晨跑锻炼\",\n"
+            "  \"00:00-07:00\": \"睡觉\",\n"
+            "  \"07:00-08:00\": \"早餐\",\n"
+            "  \"12:00-13:00\": \"午餐\",\n"
             "  \"14:00-16:00\": \"上数学课\",\n"
-            "  \"19:00-20:00\": \"晚餐聚会\"\n"
+            "  \"18:00-19:00\": \"晚餐\",\n"
+            "  \"20:00-21:00\": \"休息放松\",\n"
+            "  \"22:00-23:00\": \"夜读\"\n"
             "}"
         )
         system_message = {"role": "user", "content": system_content}
@@ -144,19 +153,28 @@ class charactor(threading.Thread):
 
         response = scheduler.invoke(messages)
         response_content = response.content.strip()
-
+        print(f"{self.name} 的原始日程输出: {response_content}")
         endtime = time.time()
         print(f"生成 {self.name} 的日程用时：{endtime - starttime}")
 
         try:
             self.schedule = json.loads(response_content)
+            has_sleep = any("睡觉" in desc for desc in self.schedule.values())
+            has_meals = sum(1 for desc in self.schedule.values() if "早餐" in desc or "午餐" in desc or "晚餐" in desc) >= 3
+            has_rest = any("休息" in desc for desc in self.schedule.values())
+            if not (has_sleep and has_meals and has_rest):
+                raise ValueError("日程缺少必选活动")
         except json.JSONDecodeError:
             print(f"警告：{self.name} 的日程生成失败，使用默认日程")
             self.schedule = {
-                "08:00-09:00": "起床和早餐",
-                "10:00-12:00": "上课",
-                "14:00-16:00": "自习",
-                "18:00-19:00": "晚餐"
+                "00:00-07:00": "睡觉",
+                "07:00-08:00": "早餐",
+                "08:00-10:00": "晨读",
+                "12:00-13:00": "午餐",
+                "14:00-16:00": "上课",
+                "18:00-19:00": "晚餐",
+                "20:00-21:00": "休息放松",
+                "21:00-22:00": "社团活动"
             }
         print(f"{self.name} 的日程：{json.dumps(self.schedule, ensure_ascii=False, indent=2)}")
         # 将日程存储到 chatroom.participants 中
@@ -171,10 +189,35 @@ class charactor(threading.Thread):
             "timestamp": datetime.now().isoformat()
         })
 
+    def is_time_in_schedule(self, current_time):
+        """检查当前时间是否在某项日程内，返回活动描述和结束时间"""
+        current_hour_min = current_time.strftime("%H:%M")
+        for time_range, activity in self.schedule.items():
+            start, end = time_range.split("-")
+            if start <= current_hour_min < end:
+                end_time = datetime.strptime(f"{current_time.strftime('%Y-%m-%d')} {end}", "%Y-%m-%d %H:%M")
+                return activity, end_time
+        return None, None
+
     def generate_response(self):
         while self.chatroom.chat_round > 0:
             starttime = time.time()
+            current_time = datetime.now()
 
+
+            # 检查是否处于忙碌状态
+            if self.is_busy and current_time < self.busy_until:
+                print(f"{self.name}: 当前忙碌中，直到 {self.busy_until.strftime('%H:%M')}，暂不发言")
+                time.sleep(1)
+                continue
+
+            # 检查当前时间是否在日程内
+            current_activity, end_time = self.is_time_in_schedule(current_time)
+            if current_activity and "开会" in current_activity:
+                self.is_busy = True
+                self.busy_until = end_time
+                print(f"{self.name}: 当前在开会，暂停发言直到 {end_time.strftime('%H:%M')}")
+            
             system_content = self.background + "\n" + self.chatroom.chat_background
             system_message = {"role": "system", "content": system_content}
             messages = [system_message]
@@ -186,6 +229,7 @@ class charactor(threading.Thread):
                     f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                     f"你是{self.name}，你的日程安排如下：\n{json.dumps(self.schedule, ensure_ascii=False)}\n"
                     f"你的思考和言行受MBTI性格特质和日程安排影响。可选择是否回应当前话题。\n"
+                    f"如果当前活动让你无法发言（如开会），可以说‘我先忙，你们聊’并暂停参与。\n"
                     f"请按以下格式回复：\n"
                     f"<decision>yes/no</decision>\n"
                     f"<think>你的思考</think>\n"
@@ -212,6 +256,12 @@ class charactor(threading.Thread):
                     "content": chat_response,
                     "timestamp": timestamp
                 })
+
+                # 如果提到“开会”或类似活动，设置为忙碌状态
+                if "开会" in chat_response or "我先忙" in chat_response:
+                    self.is_busy = True
+                    self.busy_until = end_time if end_time else current_time.replace(hour=current_time.hour + 1, minute=0, second=0)
+            
             full_message = {
                 "sender": self.name,
                 "content": chat_response if decision == "yes" else "",
