@@ -3,163 +3,100 @@ import json
 from datetime import datetime
 import time
 import random
+from typing import Dict, Any, List, Optional, Tuple
+
+from willingness_manager import WillingnessManger
+from prompt_builder import PromptBuilder
 
 # =====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
 llm_chat = ChatDeepSeek(
     model="deepseek-chat",
-    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
+    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"
 )
 
 llm_reasoner = ChatDeepSeek(
     model="deepseek-reasoner",
-    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
+    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"
 )
 
 scheduler = ChatDeepSeek(
     model="deepseek-chat",
-    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"  # 替换实际密钥
+    api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"
 )
 
-# =====定义角色类=====
-class charactor(threading.Thread):
-    '''角色类:包括名字，mbti，所在聊天室，背景故事，心理活动，日程安排'''
-    name = 'undefined'
-    mbti = [0.5, 0.5, 0.5, 0.5]
-    chatroom = None
-    background = 'undefined'
-    thoughts = []
-    schedule = {}
+
+class Character(threading.Thread):
+    """
+    角色类: 管理角色属性、状态和行为
     
-    def __init__(self, name, mbti, chatroom, background):
+    属性:
+        name: 角色名称
+        mbti: MBTI性格特质权重 [I倾向, N倾向, F倾向, P倾向]
+        chatroom: 所在聊天室引用
+        background: 角色背景故事
+        thoughts: 角色心理活动记录
+        schedule: 角色日程安排
+        willingness_manager: 聊天意愿管理器
+    """
+    
+    def __init__(self, name: str, mbti: List[float], chatroom: Any, background: str):
+        """
+        初始化角色
+        
+        参数:
+            name: 角色名称
+            mbti: MBTI性格特质权重
+            chatroom: 聊天室对象
+            background: 角色背景描述
+        """
         threading.Thread.__init__(self)
         self.name = name
         self.mbti = mbti
         self.chatroom = chatroom
         
-        # 添加自然对话风格的指导
-        natural_dialogue_guidance = """
-作为一个真实的大学生，你的对话应该自然流畅，像人类一样表达：
-
-1. 不要使用括号"()"来描述动作或情感，而是通过语言表达和用词选择自然地传达情绪
-2. 不要写"*笑*"、"*叹气*"等表情动作描述
-3. 用适当的语气词、标点符号来传达情绪（如：啊、哦、嗯、！、？、...）
-4. 使用符合你性格的口头禅和表达习惯
-5. 你不是AI，不要过于正式或过度解释，有时可以使用不完整句子
-6. 可以使用表情符号😊，但要适度且符合你的性格
-7. 偶尔可以犯一些小的拼写错误或用词不当，这样更接近真人聊天
-8. 避免过度文雅或结构化的语言，大学生更多使用简洁直接的表达方式
-
-示例差异：
-❌ "我觉得这很有趣 (微笑)"
-✅ "哈哈这也太有意思了吧！"
-
-❌ "我今天很开心，因为我拿到了好成绩 (开心)"
-✅ "天啊！今天拿到成绩单了，超开心的！！"
-"""
+        # 创建聊天意愿管理器
+        self.willingness_manager = WillingnessManger(name)
         
-        self.background = '你是' + self.name + '。' + background + "\n\n" + self.generate_mbti_prompt() + "\n\n" + natural_dialogue_guidance
+        # 使用PromptBuilder生成MBTI提示
+        mbti_prompt = PromptBuilder.build_mbti_prompt(self.mbti)
+        
+        # 构建完整背景
+        self.background = PromptBuilder.build_character_background(
+            self.name, background, mbti_prompt
+        )
+        
         self.thoughts = []
         self.schedule = {}
 
-    def run(self):
-        print("【线程开始】", self.name)
+    def run(self) -> None:
+        """线程运行函数，生成日程并开始响应聊天"""
+        print(f"【线程开始】{self.name}")
         self.generate_schedule()  # 先生成日程
         self.generate_response()
-        print("【线程结束】", self.name)
+        print(f"【线程结束】{self.name}")
 
-    def __del__(self):
+    def __del__(self) -> None:
+        """析构函数，清理资源"""
         pass
 
-    def generate_mbti_prompt(self):
-        """
-        根据MBTI倾向程度生成角色扮演提示词
-        
-        参数:
-        mbti_weights - 包含4个值的列表 [I倾向, N倾向, F倾向, P倾向]，每个值范围0~1
-                    (例如 [0.3, 0.6, 0.4, 0.2] 表示 30%内向, 60%直觉, 40%情感, 20%感知)
-        
-        返回:
-        角色扮演提示词字符串
-        """
-        if len(self.mbti) != 4 or any(not 0 <= w <= 1 for w in self.mbti):
-            raise ValueError("输入必须是一个包含4个0~1之间数值的列表")
-        
-        i, n, f, p = self.mbti
-        e, s, t, j = 1 - i, 1 - n, 1 - f, 1 - p
-        
-        # 确定MBTI类型
-        ei = "I" if i > 0.5 else "E"
-        sn = "N" if n > 0.5 else "S"
-        tf = "F" if f > 0.5 else "T"
-        jp = "P" if p > 0.5 else "J"
-        
-        mbti_type = ei + sn + tf + jp
-        
-        # 各维度描述
-        ei_desc = {
-            "E": f"外向型(倾向程度{int(e * 100)}%)，喜欢与人互动，从社交中获得能量",
-            "I": f"内向型(倾向程度{int(i * 100)}%)，喜欢独处，从内心世界获得能量"
-        }
-        
-        sn_desc = {
-            "S": f"实感型(倾向程度{int(s * 100)}%)，注重现实和具体细节，关注事实",
-            "N": f"直觉型(倾向程度{int(n * 100)}%)，关注大局和可能性，喜欢抽象概念"
-        }
-        
-        tf_desc = {
-            "T": f"思考型(倾向程度{int(t * 100)}%)，做决定时更注重逻辑和客观分析",
-            "F": f"情感型(倾向程度{int(f * 100)}%)，做决定时更注重价值观和人际关系"
-        }
-        
-        jp_desc = {
-            "J": f"判断型(倾向程度{int(j * 100)}%)，喜欢有计划、有条理的生活方式",
-            "P": f"感知型(倾向程度{int(p * 100)}%)，喜欢灵活、自发的生活方式"
-        }
-        
-        # 组合提示词
-        prompt = f"""请你扮演一个MBTI性格类型为{mbti_type}的人。你的性格特点如下：
-    1. {ei_desc[ei]}
-    2. {sn_desc[sn]}
-    3. {tf_desc[tf]}
-    4. {jp_desc[jp]}
-
-    请完全按照这个性格特征来回应我，包括语言风格、思考方式和行为模式。你的回答应该自然、真实地反映{mbti_type}型人格的典型特征。你可以根据具体情境自由发挥，但要始终保持{mbti_type}型人格的核心特质。"""
-        
-        return prompt
-
-    def generate_schedule(self):
+    def generate_schedule(self) -> None:
+        """生成日程安排，存储在角色内部和chatroom.participants中"""
         starttime = time.time()
 
-        """生成日程安排，仅存储在 agent 内部和 chatroom.participants 中"""
-        system_content = (
-            self.background + "\n\n"
-            f"我是{self.name}, 请为我生成今天的日程安排, 包括和要求如下:\n"
-            "1. 早上的学习和工作安排\n"
-            "2. 下午的活动和任务\n"
-            "3. 晚上的计划和休息时间\n"
-            "1. 使用24小时制（如 08:00-09:00），时间段不得重叠。\n"
-            "仅返回 JSON 格式结果，不添加任何额外说明，不要添加任何markdown或代码块样式. 例如：\n"
-            "{\n"
-            "  \"00:00-07:00\": \"睡觉\",\n"
-            "  \"07:00-08:00\": \"早餐\",\n"
-            "  \"12:00-13:00\": \"午餐\",\n"
-            "  \"14:00-16:00\": \"上数学课\",\n"
-            "  \"18:00-19:00\": \"晚餐\",\n"
-            "  \"20:00-21:00\": \"休息放松\",\n"
-            "  \"22:00-23:00\": \"夜读\"\n"
-            "}"
-        )
-
+        # 使用PromptBuilder构建日程生成提示
+        system_content = PromptBuilder.build_schedule_prompt(self.name, self.background)
         system_message = {"role": "user", "content": system_content}
         messages = [system_message]
 
+        # 调用LLM生成日程
         response = scheduler.invoke(messages)
         response_content = response.content.strip()
-        print(f"{self.name} 的原始日程输出: {response_content}")
+        print(f"{self.name} 的日程: {response_content}")
         endtime = time.time()
-        print(f"生成 {self.name} 的日程用时：{endtime - starttime}")
+        print(f"生成 {self.name} 的日程用时：{endtime - starttime:.2f}秒")
 
+        # 处理日程结果
         try:
             self.schedule = json.loads(response_content)
         except json.JSONDecodeError:
@@ -170,15 +107,13 @@ class charactor(threading.Thread):
                 "12:00-13:00": "午餐",
                 "18:00-19:00": "晚餐",
             }
-        print(f"{self.name} 的日程：{json.dumps(self.schedule, ensure_ascii=False, indent=2)}")
         # 将日程存储到 chatroom.participants 中
         for participant in self.chatroom.participants:
             if participant["name"] == self.name:
                 participant["schedule"] = self.schedule
                 break
 
-
-    def is_time_in_schedule(self, current_time):
+    def is_time_in_schedule(self, current_time: datetime) -> Tuple[Optional[str], Optional[datetime]]:
         """检查当前时间是否在某项日程内，返回活动描述和结束时间"""
         current_hour_min = current_time.strftime("%H:%M")
         for time_range, activity in self.schedule.items():
@@ -188,45 +123,73 @@ class charactor(threading.Thread):
                 return activity, end_time
         return None, None
 
-    def generate_response(self):
+    def generate_response(self) -> None:
+        """生成角色的聊天响应"""
         while self.chatroom.chat_round > 0:
             starttime = time.time()
             current_time = datetime.now()
 
             # 检查当前时间是否在日程内
             current_activity, end_time = self.is_time_in_schedule(current_time)
-            schedule_prompt = "你没有日程安排"
-            if current_activity:
-                schedule_prompt = f"当前时间是{current_time.strftime('%H:%M')}，你正在进行的活动是：{current_activity}"
             
-            system_content = self.background + "\n" + self.chatroom.chat_background
-            system_message = {"role": "system", "content": system_content}
-            messages = [system_message]
+            # 更新聊天意愿
+            chat_history = self.chatroom.chat_record[-10:]  # 获取最近10条消息
+            willingness = self.willingness_manager.update_willingness(chat_history, current_time)
+            response_prob = self.willingness_manager.get_response_probability()
+            
+            # 基于性格特质调整概率
+            # 内向型人格可能更少参与对话
+            if self.mbti[0] > 0.7:  # 高度内向
+                response_prob *= 0.8
+            # 外向型人格可能更多参与对话
+            elif self.mbti[0] < 0.3:  # 高度外向
+                response_prob *= 1.2
+                
+            # 限制范围
+            response_prob = min(max(response_prob, 0.05), 0.95)
+            
+            # 使用PromptBuilder构建消息
             history = self.chatroom.format_chat_history()
-            user_message = {
-                "role": "user",
-                "content": (
-                    f"目前聊天内容如下\n---\n{history}\n---\n"
-                    f"{schedule_prompt}\n"
-                    f"你是{self.name}. 你的思考和言行受MBTI性格特质和日程安排影响。可选择是否回应当前话题。\n"
-                    f"请按以下格式回复：\n"
-                    f"<decision>yes/no</decision>\n"
-                    f"<think>你的思考</think>\n"
-                    f"<response>你的回应</response>（不参与则留空）\n"
-                )
-            }
-            messages.append(user_message)
+            messages = PromptBuilder.build_messages(
+                self.name,
+                self.background,
+                self.chatroom.chat_background,
+                history,
+                current_time,
+                current_activity
+            )
 
+            # 使用聊天意愿系统决定是否回应
             prob = random.uniform(0, 1)
-            if prob < 0.3:
-                print(f"【{self.name}】使用思考模型...")
-                response = llm_reasoner.invoke(messages)
+            if prob < response_prob:
+                # 根据意愿强度决定使用哪个模型
+                if willingness > 0.7:
+                    print(f"【{self.name}】兴趣高，使用思考模型...")
+                    response = llm_reasoner.invoke(messages)
+                else:
+                    print(f"【{self.name}】使用聊天模型...")
+                    response = llm_chat.invoke(messages)
+                    
+                response_content = response.content
+                decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
+                
+                # 调整决策结果以符合聊天意愿
+                if willingness < 0.3 and decision == "yes":
+                    # 低意愿时，有50%概率改为不回应
+                    if random.random() < 0.5:
+                        decision = "no"
+                        chat_response = ""
+                
+                # 更新发送消息后的状态
+                if decision == "yes" and chat_response.strip():
+                    self.willingness_manager.message_sent(current_time)
             else:
-                print(f"【{self.name}】使用聊天模型...")
-                response = llm_chat.invoke(messages)
-            response_content = response.content
-            decision, thought, chat_response = self.chatroom.extract_response_parts(response_content)
-
+                # 兴趣不够，直接不回应
+                decision = "no"
+                thought = "我现在不太想参与这个话题。"
+                chat_response = ""
+                
+            # 剩余处理逻辑保持不变...
             endtime = time.time()
             
             if self.chatroom.chat_round <= 0:
@@ -253,12 +216,12 @@ class charactor(threading.Thread):
 
             print()
             print(f"{self.name}: ")
-            print(f"  🤔 决定{'参与' if decision == 'yes' else '不参与'}发言")
+            print(f"  🤔 决定{'参与' if decision == "yes" else '不参与'}发言 (意愿值: {willingness:.2f}, 概率: {response_prob:.2f})")
             if thought:
                 print(f"  💭 {thought}")
             if decision == "yes" and chat_response.strip():
                 print(f"  🗣️ {chat_response}")
             
-            print(f"生成 {self.name} 的回应用时：{endtime - starttime}")
+            print(f"生成 {self.name} 的回应用时：{endtime - starttime:.2f}秒")
             self.chatroom.save_chat_history(incremental=True)
             time.sleep(1)
