@@ -76,7 +76,6 @@ class Character(threading.Thread):
     def run(self) -> None:
         """线程运行函数，生成日程并开始响应聊天"""
         print(f"【线程开始】{self.name}")
-        self.generate_schedule()  # 先生成日程
         self.generate_response()
         print(f"【线程结束】{self.name}")
 
@@ -111,11 +110,8 @@ class Character(threading.Thread):
                 "12:00-13:00": "午餐",
                 "18:00-19:00": "晚餐",
             }
-        # 将日程存储到 chatroom.participants 中
-        for participant in self.chatroom.participants:
-            if participant["name"] == self.name:
-                participant["schedule"] = self.schedule
-                break
+        
+        return self.schedule
 
     def is_time_in_schedule(self, current_time: datetime) -> Tuple[Optional[str], Optional[datetime]]:
         """检查当前时间是否在某项日程内，返回活动描述和结束时间"""
@@ -166,7 +162,7 @@ class Character(threading.Thread):
             prob = random.uniform(0, 1)
             if prob < response_prob:
                 # 根据意愿强度决定使用哪个模型
-                if willingness > 0.7:
+                if willingness > 0.5:
                     print(f"【{self.name}】兴趣高，使用思考模型...")
                     response = llm_reasoner.invoke(messages)
                 else:

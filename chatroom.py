@@ -164,33 +164,38 @@ class ChatRoom:
         参数:
             chat_length: 聊天总轮数
         """
-        print("=== 生成每日日程 ===")
-        # 为每个角色生成日程安排
-        for character in self.charactors:
-            character.generate_schedule()
-            
-        print("=== 开始聊天 ===")
-        # 添加初始消息
-        if self.initial_message:
-            self.chat_record.extend(self.initial_message)
-            self.full_record.extend(self.initial_message)
+        try:
+            print("=== 生成每日日程 ===")
+            # 为每个角色生成日程安排
+            for character in self.charactors:
+                schedule = character.generate_schedule()
+                self.participants[-1]["schedule"] = schedule  # 更新参与者的日程安排
+                
+            print("=== 开始聊天 ===")
+            # 添加初始消息
+            if self.initial_message:
+                self.chat_record.extend(self.initial_message)
+                self.full_record.extend(self.initial_message)
 
-        # 设置聊天轮数并启动所有角色线程
-        self.chat_round = chat_length
-        for character in self.charactors:
-            character.start()
-            
-        # 等待所有角色线程完成
-        for character in self.charactors:
-            character.join()
-            
-        print("【聊天结束】")
-        # 清理角色资源
-        for character in self.charactors:
-            character.__del__()
-            
-        # 保存最终的聊天历史
-        self.save_chat_history(incremental=False)
+            # 设置聊天轮数并启动所有角色线程
+            self.chat_round = chat_length
+            for character in self.charactors:
+                character.start()
+                
+            # 等待所有角色线程完成
+            for character in self.charactors:
+                character.join()
+                
+            print("【聊天结束】")
+        except KeyboardInterrupt:
+            print("\n【聊天被用户中断】")
+        finally:
+            # 清理角色资源
+            for character in self.charactors:
+                character.__del__()
+                
+            # 保存最终的聊天历史
+            self.save_chat_history(incremental=False)
         
     def add_chat_background(self, background: str):
         """
