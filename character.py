@@ -36,10 +36,31 @@ class charactor(threading.Thread):
         self.name = name
         self.mbti = mbti
         self.chatroom = chatroom
-        self.background = '你是' + self.name + '。' + background + "\n\n" + self.generate_mbti_prompt()
+        
+        # 添加自然对话风格的指导
+        natural_dialogue_guidance = """
+作为一个真实的大学生，你的对话应该自然流畅，像人类一样表达：
+
+1. 不要使用括号"()"来描述动作或情感，而是通过语言表达和用词选择自然地传达情绪
+2. 不要写"*笑*"、"*叹气*"等表情动作描述
+3. 用适当的语气词、标点符号来传达情绪（如：啊、哦、嗯、！、？、...）
+4. 使用符合你性格的口头禅和表达习惯
+5. 你不是AI，不要过于正式或过度解释，有时可以使用不完整句子
+6. 可以使用表情符号😊，但要适度且符合你的性格
+7. 偶尔可以犯一些小的拼写错误或用词不当，这样更接近真人聊天
+8. 避免过度文雅或结构化的语言，大学生更多使用简洁直接的表达方式
+
+示例差异：
+❌ "我觉得这很有趣 (微笑)"
+✅ "哈哈这也太有意思了吧！"
+
+❌ "我今天很开心，因为我拿到了好成绩 (开心)"
+✅ "天啊！今天拿到成绩单了，超开心的！！"
+"""
+        
+        self.background = '你是' + self.name + '。' + background + "\n\n" + self.generate_mbti_prompt() + "\n\n" + natural_dialogue_guidance
         self.thoughts = []
         self.schedule = {}
-
 
     def run(self):
         print("【线程开始】", self.name)
@@ -113,7 +134,7 @@ class charactor(threading.Thread):
         """生成日程安排，仅存储在 agent 内部和 chatroom.participants 中"""
         system_content = (
             self.background + "\n\n"
-            f"我是{self.name}, {self.background}, 请为我生成今天的日程安排, 包括和要求如下:\n"
+            f"我是{self.name}, 请为我生成今天的日程安排, 包括和要求如下:\n"
             "1. 早上的学习和工作安排\n"
             "2. 下午的活动和任务\n"
             "3. 晚上的计划和休息时间\n"
@@ -174,6 +195,7 @@ class charactor(threading.Thread):
 
             # 检查当前时间是否在日程内
             current_activity, end_time = self.is_time_in_schedule(current_time)
+            schedule_prompt = "你没有日程安排"
             if current_activity:
                 schedule_prompt = f"当前时间是{current_time.strftime('%H:%M')}，你正在进行的活动是：{current_activity}"
             
