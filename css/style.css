@@ -135,28 +135,67 @@ header {
     transition: color 0.3s;
 }
 
-.message.alice .bubble {
-    background-color: var(--alice-bubble);
-    float: left;
-    border-bottom-left-radius: 5px;
+
+/* Sender color classes for chat bubbles */
+.sender-color-1 .bubble {
+    background-color: #e6f7ff;
+    border-color: #91d5ff;
 }
 
-.message.bob .bubble {
-    background-color: var(--bob-bubble);
-    float: right;
-    border-bottom-right-radius: 5px;
+.sender-color-2 .bubble {
+    background-color: #f6ffed;
+    border-color: #b7eb8f;
 }
 
-.message.charlie .bubble {
-    background-color: var(--charlie-bubble);
-    float: left;
-    border-bottom-left-radius: 5px;
+.sender-color-3 .bubble {
+    background-color: #fff7e6;
+    border-color: #ffd591;
 }
 
-.message.diana .bubble {
-    background-color: var(--diana-bubble);
-    float: left;
-    border-bottom-left-radius: 5px;
+.sender-color-4 .bubble {
+    background-color: #fff1f0;
+    border-color: #ffa39e;
+}
+
+.sender-color-5 .bubble {
+    background-color: #f9f0ff;
+    border-color: #d3adf7;
+}
+
+.sender-color-6 .bubble {
+    background-color: #e6fffb;
+    border-color: #87e8de;
+}
+
+/* Dark mode adjustments */
+.dark-mode .sender-color-1 .bubble {
+    background-color: #003a5c;
+    border-color: #177ddc;
+}
+
+.dark-mode .sender-color-2 .bubble {
+    background-color: #1d3712;
+    border-color: #389e0d;
+}
+
+.dark-mode .sender-color-3 .bubble {
+    background-color: #4d2e00;
+    border-color: #d89614;
+}
+
+.dark-mode .sender-color-4 .bubble {
+    background-color: #4d1212;
+    border-color: #d32029;
+}
+
+.dark-mode .sender-color-5 .bubble {
+    background-color: #22075e;
+    border-color: #722ed1;
+}
+
+.dark-mode .sender-color-6 .bubble {
+    background-color: #003a3c;
+    border-color: #13c2c2;
 }
 
 .thought {

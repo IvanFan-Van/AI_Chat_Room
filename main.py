@@ -1,10 +1,20 @@
 from dotenv import load_dotenv, find_dotenv
-from character import charactor, llm
+from character import charactor
 from chatroom import ChatRoom
+from datetime import datetime
 
 load_dotenv(find_dotenv())
 
 if __name__ == "__main__":
+    chat_room = ChatRoom(initial_message={
+        "sender": "David",
+        "content": "Emily 我喜欢你",
+        "timestamp": datetime.now().isoformat()
+    })
+    chat_room.add_charactor(charactor('David', [0.7, 0.6, 0.8, 0.7], chat_room, background="你是一个帅气爱健身的大学生,但是你好奇心爆炸,喜欢凑热闹,但是你看不惯校草George,你暗恋Emily"))  # ENFJ
+    chat_room.add_charactor(charactor('Emily', [0.6, 0.3, 0.2, 0.8], chat_room, background="你是一个时尚女大,爱逛街,买衣服,打扮,但是你暗恋你的闺蜜Helen,对男生置之不理"))  # ESTJ
+    chat_room.add_charactor(charactor('George', [0.2, 0.4, 0.3, 0.3], chat_room, background="你是一个大学校草,你与David是好兄弟,你为高冷,不爱凑热闹")) # ISTP
+    chat_room.add_charactor(charactor('Helen', [0.3, 0.2, 0.7, 0.6], chat_room, background="你是一个自卑的女大学生,Emily是你的好闺蜜,常常倾听她的诉求"))  # ISFJ
     chat_room = ChatRoom()
     chat_room.add_charactor(charactor('David', [0.7, 0.6, 0.8, 0.7], chat_room, background="你是香港大学社会学系的学生，是ENFJ,喜欢组织社交活动和听流行音乐。"
         "你和Emily是同班同学，擅长激发团队灵感；和Helen是学生会同事，欣赏她的细心。"))  # ENFJ
