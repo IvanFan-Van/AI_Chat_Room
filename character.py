@@ -10,6 +10,8 @@ from prompt_builder import PromptBuilder
 
 # =====初始化LLM=====
 from langchain_deepseek import ChatDeepSeek
+import re
+
 llm_chat = ChatDeepSeek(
     model="deepseek-chat",
     api_key="sk-34442cc84ebb4894b2eb884b3a6cd7f1"
@@ -40,7 +42,7 @@ class Character(threading.Thread):
         willingness_manager: 聊天意愿管理器
     """
     
-    def __init__(self, name: str, mbti: List[float], chatroom: Any, background: str):
+    def __init__(self, name: str, chatroom: Any, background_path: str):
         """
         初始化角色
         
@@ -52,14 +54,22 @@ class Character(threading.Thread):
         """
         threading.Thread.__init__(self)
         self.name = name
-        self.mbti = mbti
+        # self.mbti = mbti
         self.chatroom = chatroom
-        self.background = background
+        with open(background_path, "r", encoding="utf-8") as f:
+            self.background = f.read()
         
         # 创建聊天意愿管理器
         self.willingness_manager = WillingnessManger(name)
-
-
+        
+        # 读取MBTI性格特质
+        # 从 background_path 提取 MBTI
+        match = re.search(r"MBTI_characters\\.*?（([A-Z]{4})）", background_path)
+        if match:
+            self.mbti = match.group(1)
+        else:
+            raise ValueError(f"无法从路径 {background_path} 提取 MBTI 信息")
+        
         self.thoughts = []
         self.schedule = {}
 
@@ -210,7 +220,7 @@ class Character(threading.Thread):
 
             print()
             print(f"{self.name}: ")
-            print(f"  🤔 决定{'参与' if decision == "yes" else '不参与'}发言 (意愿值: {willingness:.2f}, 概率: {response_prob:.2f})")
+            print(f"  🤔 决定{'参与' if decision == 'yes' else '不参与'}发言 (意愿值: {willingness:.2f}, 概率: {response_prob:.2f})")
             if thought:
                 print(f"  💭 {thought}")
             if decision == "yes" and chat_response.strip():

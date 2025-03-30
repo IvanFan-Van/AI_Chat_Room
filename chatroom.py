@@ -173,8 +173,8 @@ class ChatRoom:
         print("=== 开始聊天 ===")
         # 添加初始消息
         if self.initial_message:
-            self.chat_record.append(self.initial_message)
-            self.full_record.append(self.initial_message)
+            self.chat_record.extend(self.initial_message)
+            self.full_record.extend(self.initial_message)
 
         # 设置聊天轮数并启动所有角色线程
         self.chat_round = chat_length

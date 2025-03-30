@@ -100,7 +100,7 @@ class PromptBuilder:
         """构建生成日程的提示"""
         return (
             background + "\n\n"
-            f"我是{name}, 请为我生成今天的日程安排, 包括和要求如下:\n"
+            f"请为我生成今天的日程安排, 包括和要求如下:\n"
             "1. 早上的学习和工作安排\n"
             "2. 下午的活动和任务\n"
             "3. 晚上的计划和休息时间\n"
@@ -164,23 +164,7 @@ if __name__ == "__main__":
 
     # 测试数据
     name = "张三"
-    raw_background = "你是健身教练之子，母亲早逝，靠奖学金维持学业,你喜欢健身和弹吉他. 表面玩世不恭，实际用健身对抗焦虑症."
-    mbti_weights = [0.65, 0.40, 0.31, 0.85]  # INFJ
-    
-    # 测试MBTI提示生成
-    mbti_prompt = PromptBuilder.build_mbti_prompt(mbti_weights)
-    print("===MBTI提示===")
-    print(mbti_prompt)
-    
-    # 测试角色背景生成
-    background = PromptBuilder.build_character_background(name, raw_background, mbti_prompt)
-    print("\n===完整角色背景===")
-    print(background)  # 只显示开头部分
-    
-    # 测试日程提示生成
-    schedule_prompt = PromptBuilder.build_schedule_prompt(name, background)
-    print("\n===日程生成提示===")
-    print(schedule_prompt)  # 只显示开头部分
+    background = "你是健身教练之子，母亲早逝，靠奖学金维持学业,你喜欢健身和弹吉他. 表面玩世不恭，实际用健身对抗焦虑症."
     
     # 测试消息构建
     chat_background = "你现在在一个大学的大学群内聊天"
@@ -188,6 +172,11 @@ if __name__ == "__main__":
     current_time = datetime.now()
     current_activity = "阅读书籍"
     
+    # 构建生成Schedule的提示
+    prompt = PromptBuilder.build_schedule_prompt(name, background)
+    print("===生成日程的提示===")
+    print(prompt)
+
     messages = PromptBuilder.build_messages(
         name, background, chat_background, chat_history, 
         current_time, current_activity
