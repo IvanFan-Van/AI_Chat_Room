@@ -20,13 +20,6 @@ class PromptBuilder:
 7. 偶尔可以犯一些小的拼写错误或用词不当，这样更接近真人聊天
 8. 避免过度文雅或结构化的语言，大学生更多使用简洁直接的表达方式
 9. 要求简短明了，避免冗长的句子和复杂的结构
-
-示例差异：
-❌ "我觉得这很有趣 (微笑)"
-✅ "哈哈这也太有意思了吧！"
-
-❌ "我今天很开心，因为我拿到了好成绩 (开心)"
-✅ "天啊！今天拿到成绩单了，超开心的！！"
 """
 
     @staticmethod
@@ -107,7 +100,7 @@ class PromptBuilder:
         """构建生成日程的提示"""
         return (
             background + "\n\n"
-            f"我是{name}, 请为我生成今天的日程安排, 包括和要求如下:\n"
+            f"请为我生成今天的日程安排, 包括和要求如下:\n"
             "1. 早上的学习和工作安排\n"
             "2. 下午的活动和任务\n"
             "3. 晚上的计划和休息时间\n"
@@ -154,10 +147,11 @@ class PromptBuilder:
         return "你没有日程安排"
     
     @staticmethod
-    def build_messages(name: str, background: str, chat_background: str, 
+    def build_messages(name: str, background: str, 
                       chat_history: str, current_time: datetime, 
                       current_activity: Optional[str] = None) -> List[Dict[str, str]]:
         """构建用于LLM输入的完整消息数组"""
+        chat_background = ""
         system_message = PromptBuilder.build_system_message(background, chat_background)
         schedule_prompt = PromptBuilder.format_schedule_prompt(current_time, current_activity)
         user_message = PromptBuilder.build_user_message(name, chat_history, schedule_prompt)
@@ -171,23 +165,7 @@ if __name__ == "__main__":
 
     # 测试数据
     name = "张三"
-    raw_background = "你是健身教练之子，母亲早逝，靠奖学金维持学业,你喜欢健身和弹吉他. 表面玩世不恭，实际用健身对抗焦虑症."
-    mbti_weights = [0.65, 0.40, 0.31, 0.85]  # INFJ
-    
-    # 测试MBTI提示生成
-    mbti_prompt = PromptBuilder.build_mbti_prompt(mbti_weights)
-    print("===MBTI提示===")
-    print(mbti_prompt)
-    
-    # 测试角色背景生成
-    background = PromptBuilder.build_character_background(name, raw_background, mbti_prompt)
-    print("\n===完整角色背景===")
-    print(background[:200] + "...")  # 只显示开头部分
-    
-    # 测试日程提示生成
-    schedule_prompt = PromptBuilder.build_schedule_prompt(name, background)
-    print("\n===日程生成提示===")
-    print(schedule_prompt[:200] + "...")  # 只显示开头部分
+    background = "你是健身教练之子，母亲早逝，靠奖学金维持学业,你喜欢健身和弹吉他. 表面玩世不恭，实际用健身对抗焦虑症."
     
     # 测试消息构建
     chat_background = "你现在在一个大学的大学群内聊天"
@@ -195,6 +173,11 @@ if __name__ == "__main__":
     current_time = datetime.now()
     current_activity = "阅读书籍"
     
+    # 构建生成Schedule的提示
+    prompt = PromptBuilder.build_schedule_prompt(name, background)
+    print("===生成日程的提示===")
+    print(prompt)
+
     messages = PromptBuilder.build_messages(
         name, background, chat_background, chat_history, 
         current_time, current_activity
@@ -203,5 +186,7 @@ if __name__ == "__main__":
     print("\n===消息构建结果===")
     print("系统消息长度:", len(messages[0]["content"]))
     print("用户消息长度:", len(messages[1]["content"]))
+    print("\n系统消息内容:")
+    print(messages[0]["content"])
     print("\n用户消息内容:")
     print(messages[1]["content"])
