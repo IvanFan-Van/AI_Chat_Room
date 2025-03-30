@@ -76,6 +76,7 @@ class Character(threading.Thread):
     def run(self) -> None:
         """线程运行函数，生成日程并开始响应聊天"""
         print(f"【线程开始】{self.name}")
+        self.generate_schedule()
         self.generate_response()
         print(f"【线程结束】{self.name}")
 
@@ -84,6 +85,7 @@ class Character(threading.Thread):
         pass
 
     def generate_schedule(self) -> None:
+        print(f"【生成日程开始】{self.name}")
         """生成日程安排，存储在角色内部和chatroom.participants中"""
         starttime = time.time()
 
@@ -111,7 +113,8 @@ class Character(threading.Thread):
                 "18:00-19:00": "晚餐",
             }
         
-        return self.schedule
+        self.chatroom.participants[self.name]["schedule"] = self.schedule
+        self.chatroom.participants[self.name]["mbti"] = self.mbti
 
     def is_time_in_schedule(self, current_time: datetime) -> Tuple[Optional[str], Optional[datetime]]:
         """检查当前时间是否在某项日程内，返回活动描述和结束时间"""
@@ -125,7 +128,7 @@ class Character(threading.Thread):
 
     def generate_response(self) -> None:
         """生成角色的聊天响应"""
-        while self.chatroom.chat_round > 0:
+        while len(self.chatroom.chat_record) < self.chatroom.chat_round:
             starttime = time.time()
             current_time = datetime.now()
 
@@ -190,10 +193,6 @@ class Character(threading.Thread):
                 
             # 剩余处理逻辑保持不变...
             endtime = time.time()
-            
-            if self.chatroom.chat_round <= 0:
-                break
-            self.chatroom.chat_round -= 1
 
             timestamp = datetime.now().isoformat()
             if decision == "yes" and chat_response.strip():

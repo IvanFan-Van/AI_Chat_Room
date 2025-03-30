@@ -41,7 +41,7 @@ class ChatRoom:
     5. 控制聊天流程
     """
     
-    def __init__(self, initial_message: Optional[Dict[str, Any]] = None):
+    def __init__(self, chat_round=100, initial_message: Optional[Dict[str, Any]] = None):
         """
         初始化聊天室
         
@@ -59,7 +59,7 @@ class ChatRoom:
         self.participants: List[Participant] = []  # 参与者信息列表
         self.chat_record = []  # 可见聊天记录
         self.full_record = []  # 完整聊天记录（包含内部状态）
-        self.chat_round = 0  # 聊天轮数
+        self.chat_round = chat_round  # 聊天轮数
         
         # 设置初始消息
         self.initial_message = initial_message if initial_message else None
@@ -165,20 +165,12 @@ class ChatRoom:
             chat_length: 聊天总轮数
         """
         try:
-            print("=== 生成每日日程 ===")
-            # 为每个角色生成日程安排
-            for character in self.charactors:
-                schedule = character.generate_schedule()
-                self.participants[-1]["schedule"] = schedule  # 更新参与者的日程安排
-                
-            print("=== 开始聊天 ===")
+            print("=== 开始运行 ===")
             # 添加初始消息
             if self.initial_message:
                 self.chat_record.extend(self.initial_message)
                 self.full_record.extend(self.initial_message)
 
-            # 设置聊天轮数并启动所有角色线程
-            self.chat_round = chat_length
             for character in self.charactors:
                 character.start()
                 
