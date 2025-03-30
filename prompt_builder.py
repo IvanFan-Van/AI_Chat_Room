@@ -15,6 +15,9 @@ class PromptBuilder:
 2. 不要写"*笑*"、"*叹气*"等表情动作描述
 3. 用适当的语气词、标点符号来传达情绪（如：啊、哦、嗯、！、？、...）
 4. 使用符合你性格的口头禅和表达习惯
+5. 避免使用过于复杂的句子结构，保持语言简洁明了,字数保持在20字以内
+6. 使用自然的语气和语调，避免过于正式或生硬的表达方式
+7. 记住你是一名大学生,你的心态非常的佛性,平常不会在交流中过多的提及到学业相关的内容,在群内和群友互相水群
 """
 
     @staticmethod
@@ -116,8 +119,8 @@ class PromptBuilder:
     @staticmethod
     def build_system_message(background: str) -> Dict[str, str]:
         """构建包含角色和聊天上下文的系统消息"""
-        # system_content = background + "\n" + PromptBuilder.NATURAL_DIALOGUE_GUIDANCE
-        system_content = background
+        system_content = background + "\n" + PromptBuilder.NATURAL_DIALOGUE_GUIDANCE
+        #system_content = background
         return {"role": "system", "content": system_content}
     
     @staticmethod

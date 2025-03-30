@@ -7,10 +7,10 @@ load_dotenv(find_dotenv())
 
 if __name__ == "__main__":
     chat_room = ChatRoom(initial_message=None)
-    chat_room.add_charactor(Character('林一', chat_room, background_path="MBTI_characters\murder（INTJ）.txt"))  # ENFJ
-    chat_room.add_charactor(Character('丁二', chat_room, background_path="MBTI_characters\murder（INTJ）.txt"))  # ESTJ
-    chat_room.add_charactor(Character('肖九', chat_room, background_path="MBTI_characters\murder（INTJ）.txt")) # ISTP
-    chat_room.add_charactor(Character('李四', chat_room, background_path="MBTI_characters\murder（INTJ）.txt"))  # ISFJ
+    chat_room.add_charactor(Character('林一', chat_room, background_path="MBTI_characters\林一（ESTP）.txt"))  # ENFJ
+    chat_room.add_charactor(Character('丁二', chat_room, background_path="MBTI_characters\丁二（INTJ）.txt"))  # ESTJ
+    chat_room.add_charactor(Character('肖九', chat_room, background_path="MBTI_characters\肖九（ESFJ）.txt")) # ISTP
+    chat_room.add_charactor(Character('李四', chat_room, background_path="MBTI_characters\李四（ENFP）.txt"))  # ISFJ
     # # chat_room.add_charactor(charactor('Ivy', [0.4, 0.8, 0.9, 0.4], chat_room))    # INFP
     # # chat_room.add_charactor(charactor('Jack', [0.8, 0.4, 0.7, 0.3], chat_room))   # ESFP
     # # chat_room.add_charactor(charactor('Kelly', [0.9, 0.7, 0.3, 0.2], chat_room))  # ENTP
