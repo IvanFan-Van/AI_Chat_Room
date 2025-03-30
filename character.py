@@ -113,8 +113,11 @@ class Character(threading.Thread):
                 "18:00-19:00": "晚餐",
             }
         
-        self.chatroom.participants[self.name]["schedule"] = self.schedule
-        self.chatroom.participants[self.name]["mbti"] = self.mbti
+        for participant in self.chatroom.participants:
+            if participant.name == self.name:
+                participant.schedule = self.schedule
+                break
+        print(f"【生成日程结束】{self.name}")
 
     def is_time_in_schedule(self, current_time: datetime) -> Tuple[Optional[str], Optional[datetime]]:
         """检查当前时间是否在某项日程内，返回活动描述和结束时间"""
