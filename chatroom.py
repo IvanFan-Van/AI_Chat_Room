@@ -143,7 +143,7 @@ class ChatRoom:
             "session_id": self.session_id,
             "timestamp": datetime.now().isoformat(),
             "participants": self.participants,  # 保存每个角色的信息，包括日程
-            "background": self.chat_background,  # 聊天背景
+            # "background": self.chat_background,  # 聊天背景
             "messages": self.full_record  # 完整消息记录
         }
         

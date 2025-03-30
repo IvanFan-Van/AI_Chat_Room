@@ -168,7 +168,6 @@ if __name__ == "__main__":
     background = "你是健身教练之子，母亲早逝，靠奖学金维持学业,你喜欢健身和弹吉他. 表面玩世不恭，实际用健身对抗焦虑症."
     
     # 测试消息构建
-    chat_background = "你现在在一个大学的大学群内聊天"
     chat_history = "David: Emily 我喜欢你\nEmily: 你喜欢我？\nGeorge: 哈哈，David又在开玩笑了"
     current_time = datetime.now()
     current_activity = "阅读书籍"
@@ -179,7 +178,7 @@ if __name__ == "__main__":
     print(prompt)
 
     messages = PromptBuilder.build_messages(
-        name, background, chat_background, chat_history, 
+        name, background, chat_history, 
         current_time, current_activity
     )
     
