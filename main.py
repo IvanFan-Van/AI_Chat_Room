@@ -6,7 +6,7 @@ from datetime import datetime
 load_dotenv(find_dotenv())
 
 if __name__ == "__main__":
-    chat_room = ChatRoom(initial_message=None)
+    chat_room = ChatRoom(chat_round=100, chat_background="你刚刚加入了一个新群聊, 以下是该群的群公告: 这是一个学校“百团大战”（学校社团招新）宣传交流群，你们是社团的负责人或者想加入社团的人，一起寻找搭子吧~", initial_message=None)
     chat_room.add_charactor(Character('林一', chat_room, background_path="MBTI_characters\林一（ESTP）.txt"))  # ENFJ
     chat_room.add_charactor(Character('丁二', chat_room, background_path="MBTI_characters\丁二（INTJ）.txt"))  # ESTJ
     chat_room.add_charactor(Character('肖九', chat_room, background_path="MBTI_characters\肖九（ESFJ）.txt")) # ISTP
@@ -23,4 +23,4 @@ if __name__ == "__main__":
     # # chat_room.add_charactor(charactor('Frank', [0.4, 0.6, 0.2, 0.3], chat_room))  # INTP
     # # chat_room.add_charactor(charactor('Grace', [0.9, 0.9, 0.4, 0.6], chat_room))  # ENTJ
     # # chat_room.add_charactor(charactor('Henry', [0.1, 0.1, 0.6, 0.1], chat_room))  # ISFP
-    chat_room.start_chat(100)
+    chat_room.start_chat()

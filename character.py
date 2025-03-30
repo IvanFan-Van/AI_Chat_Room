@@ -156,6 +156,7 @@ class Character(threading.Thread):
             messages = PromptBuilder.build_messages(
                 self.name,
                 self.background,
+                self.chat_room.chat_background,
                 history,
                 current_time,
                 current_activity

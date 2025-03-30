@@ -41,7 +41,7 @@ class ChatRoom:
     5. 控制聊天流程
     """
     
-    def __init__(self, chat_round=100, initial_message: Optional[Dict[str, Any]] = None):
+    def __init__(self, chat_round=100, chat_background="", initial_message: Optional[Dict[str, Any]] = None):
         """
         初始化聊天室
         
@@ -60,6 +60,7 @@ class ChatRoom:
         self.chat_record = []  # 可见聊天记录
         self.full_record = []  # 完整聊天记录（包含内部状态）
         self.chat_round = chat_round  # 聊天轮数
+        self.chat_background = chat_background  # 聊天背景
         
         # 设置初始消息
         self.initial_message = initial_message if initial_message else None
@@ -157,7 +158,7 @@ class ChatRoom:
             
         return file_path
 
-    def start_chat(self, chat_length: int):
+    def start_chat(self):
         """
         启动聊天流程
         

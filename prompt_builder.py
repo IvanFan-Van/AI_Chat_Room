@@ -117,9 +117,9 @@ class PromptBuilder:
         )
 
     @staticmethod
-    def build_system_message(background: str) -> Dict[str, str]:
+    def build_system_message(background: str, chat_background: str) -> Dict[str, str]:
         """构建包含角色和聊天上下文的系统消息"""
-        system_content = background + "\n" + PromptBuilder.NATURAL_DIALOGUE_GUIDANCE
+        system_content = background + "\n" + PromptBuilder.NATURAL_DIALOGUE_GUIDANCE + "\n" + chat_background
         #system_content = background
         return {"role": "system", "content": system_content}
     
@@ -152,10 +152,10 @@ class PromptBuilder:
     
     @staticmethod
     def build_messages(name: str, background: str, 
-                      chat_history: str, current_time: datetime, 
+                      chat_history: str, chat_background: str, current_time: datetime, 
                       current_activity: Optional[str] = None) -> List[Dict[str, str]]:
         """构建用于LLM输入的完整消息数组"""
-        system_message = PromptBuilder.build_system_message(background)
+        system_message = PromptBuilder.build_system_message(background, chat_background)
         user_message = PromptBuilder.build_user_message(
             name, chat_history, current_time, current_activity
         )
@@ -175,6 +175,7 @@ if __name__ == "__main__":
     chat_history = "David: Emily 我喜欢你\nEmily: 你喜欢我？\nGeorge: 哈哈，David又在开玩笑了"
     current_time = datetime.now()
     current_activity = "阅读书籍"
+    chat_background = "这是一个学校“百团大战”（学校社团招新）宣传交流群，你们是社团的负责人或者想加入社团的人，一起寻找搭子吧~"
     
     # 构建生成Schedule的提示
     prompt = PromptBuilder.build_schedule_prompt(name, background)
@@ -182,7 +183,7 @@ if __name__ == "__main__":
     print(prompt)
 
     messages = PromptBuilder.build_messages(
-        name, background, chat_history, 
+        name, background, chat_history, chat_background, 
         current_time, current_activity
     )
     
