@@ -9,17 +9,12 @@ class PromptBuilder:
     
     # 自然对话风格的指导，作为类变量存储
     NATURAL_DIALOGUE_GUIDANCE = """
-作为一个真实的大学生，你的对话应该自然流畅，像人类一样表达：
+请你使用日常且口语化的回复风格，避免使用过于正式或复杂的语言：
 
 1. 不要使用括号"()"来描述动作或情感，而是通过语言表达和用词选择自然地传达情绪
 2. 不要写"*笑*"、"*叹气*"等表情动作描述
 3. 用适当的语气词、标点符号来传达情绪（如：啊、哦、嗯、！、？、...）
 4. 使用符合你性格的口头禅和表达习惯
-5. 你不是AI，不要过于正式或过度解释，有时可以使用不完整句子
-6. 可以使用表情符号😊，但要适度且符合你的性格
-7. 偶尔可以犯一些小的拼写错误或用词不当，这样更接近真人聊天
-8. 避免过度文雅或结构化的语言，大学生更多使用简洁直接的表达方式
-9. 要求简短明了，避免冗长的句子和复杂的结构
 """
 
     @staticmethod
@@ -105,6 +100,7 @@ class PromptBuilder:
             "2. 下午的活动和任务\n"
             "3. 晚上的计划和休息时间\n"
             "4. 使用24小时制（如 08:00-09:00），时间段不得重叠。\n"
+            "5. 不需要每个时间段都有活动，可以留空。\n"
             "仅返回 JSON 格式结果，不添加任何额外说明，不要添加任何markdown或代码块样式. 例如：\n"
             "{\n"
             "  \"00:00-07:00\": \"睡觉\",\n"
@@ -118,14 +114,19 @@ class PromptBuilder:
         )
 
     @staticmethod
-    def build_system_message(background: str, chat_background: str) -> Dict[str, str]:
+    def build_system_message(background: str) -> Dict[str, str]:
         """构建包含角色和聊天上下文的系统消息"""
-        system_content = background + "\n" + chat_background
+        # system_content = background + "\n" + PromptBuilder.NATURAL_DIALOGUE_GUIDANCE
+        system_content = background
         return {"role": "system", "content": system_content}
     
     @staticmethod
-    def build_user_message(name: str, chat_history: str, schedule_prompt: str) -> Dict[str, str]:
+    def build_user_message(name: str, chat_history: str, current_time: str, current_activity: str) -> Dict[str, str]:
         """构建包含指令和上下文的用户消息"""
+        schedule_prompt = PromptBuilder.format_schedule_prompt(
+            current_time, current_activity
+        )
+        
         return {
             "role": "user",
             "content": (
@@ -151,10 +152,10 @@ class PromptBuilder:
                       chat_history: str, current_time: datetime, 
                       current_activity: Optional[str] = None) -> List[Dict[str, str]]:
         """构建用于LLM输入的完整消息数组"""
-        chat_background = ""
-        system_message = PromptBuilder.build_system_message(background, chat_background)
-        schedule_prompt = PromptBuilder.format_schedule_prompt(current_time, current_activity)
-        user_message = PromptBuilder.build_user_message(name, chat_history, schedule_prompt)
+        system_message = PromptBuilder.build_system_message(background)
+        user_message = PromptBuilder.build_user_message(
+            name, chat_history, current_time, current_activity
+        )
         
         return [system_message, user_message]
 
